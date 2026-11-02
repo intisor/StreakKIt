@@ -1,0 +1,18 @@
+{
+  "name": "@streakkit/sdk-ui",
+  "version": "1.0.0",
+  "description": "Drop-in Web Components and widgets for StreakKit",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@streakkit/sdk-core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@streakkit/backend",
+  "version": "1.0.0",
+  "description": "Offline-First Headless Streak Engine API",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "node --watch src/server.ts",
+    "test": "node --test dist/tests/evaluator.test.js dist/tests/api.e2e.test.js",
+    "seed": "node dist/db/seed.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "@fastify/cors": "^10.0.1",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2"
+  }
+}

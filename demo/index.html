@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreakKit Live Demo & Verification</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #020617;
+      color: #f8fafc;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-size: 28px;
+      margin: 0;
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #f59e0b;
+      color: #020617;
+    }
+    .btn-primary:hover {
+      background: #d97706;
+    }
+    .btn-secondary {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+    }
+    pre {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      color: #38bdf8;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #334155;
+      color: #94a3b8;
+    }
+  </style>
+  <script type="module">
+    import { StreakClient } from '../packages/sdk-core/dist/index.js';
+    import '../packages/sdk-ui/dist/index.js';
+
+    // Initialize SDK
+    const client = new StreakClient({
+      publicKey: 'pk_live_zikfash_123',
+      endpoint: 'http://localhost:3000',
+      userId: 'tailor_usr_demo'
+    });
+
+    const stateDisplay = document.getElementById('stateJson');
+
+    client.subscribe('daily_tailor_log', (state) => {
+      stateDisplay.textContent = JSON.stringify(state, null, 2);
+    });
+
+    document.getElementById('pingBtn').addEventListener('click', async () => {
+      const res = await client.ping('daily_tailor_log', 1, { action: 'measurement_saved' });
+      console.log('Optimistic ping result:', res);
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      await client.refresh('daily_tailor_log');
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>StreakKit Demo</h1>
+        <p style="color: #94a3b8; margin: 4px 0 0 0;">Offline-first headless retention & habit engine</p>
+      </div>
+      <div>
+        <!-- Drop-in UI Widget in Navbar -->
+        <streak-pill rule="daily_tailor_log" theme="dark"></streak-pill>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>🧵 ZikFash Artisan OS Simulator</span>
+        <span class="badge">Rule: daily_tailor_log (Sundays Exempt)</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 14px; margin-top: 0;">
+        Click <strong>"Save Measurement (Ping)"</strong> to trigger the optimistic local-first state machine and animate the flame widget. Click the flame pill in the header to open the detailed milestone modal!
+      </p>
+      <div class="actions">
+        <button class="btn-primary" id="pingBtn">⚡ Save Measurement (Ping)</button>
+        <button class="btn-secondary" id="refreshBtn">🔄 Fetch Server Canonical State</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Live StreakStateDTO Stream (Pub/Sub)</div>
+      <pre id="stateJson">Listening for events...</pre>
+    </div>
+
+    <!-- Drop-in Modal Container -->
+    <streak-modal rule="daily_tailor_log"></streak-modal>
+  </div>
+</body>
+</html>

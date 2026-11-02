@@ -1,0 +1,21 @@
+{
+  "name": "streakkit-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-First Headless Streak Engine & Drop-in SDK",
+  "workspaces": [
+    "backend",
+    "packages/sdk-core",
+    "packages/sdk-ui"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace=backend",
+    "start": "npm run start --workspace=backend",
+    "dev": "npm run dev --workspace=backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}
