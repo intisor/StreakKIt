@@ -209,10 +209,18 @@ class PostgresAdapter implements DbAdapter {
   }
 
   async migrate(): Promise<void> {
-    const migrationPath = path.resolve(__dirname, '../db/migrations/001_init.sql');
-    if (fs.existsSync(migrationPath)) {
-      const sql = fs.readFileSync(migrationPath, 'utf8');
-      await this.pool.query(sql);
+    const possiblePaths = [
+      path.resolve(__dirname, '../db/migrations/001_init.sql'),
+      path.resolve(__dirname, '../../src/db/migrations/001_init.sql'),
+      path.resolve(process.cwd(), 'src/db/migrations/001_init.sql'),
+      path.resolve(process.cwd(), 'backend/src/db/migrations/001_init.sql')
+    ];
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        const sql = fs.readFileSync(p, 'utf8');
+        await this.pool.query(sql);
+        break;
+      }
     }
   }
 }
