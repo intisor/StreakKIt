@@ -6,6 +6,7 @@ import { SyncEngine } from './sync.js';
 export * from './storage.js';
 export * from './optimistic.js';
 export * from './sync.js';
+export * from './micro.js';
 
 export interface StreakClientConfig {
   publicKey: string;

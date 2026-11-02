@@ -147,10 +147,11 @@ describe('StreakKit E2E API Integration', () => {
   });
 
   it('enforces secret key authorization for granting freezes', async () => {
+    const freezeUser = 'tailor_freeze_' + crypto.randomUUID();
     // 1. Attempt with public key should fail with 403 Forbidden
     const forbiddenRes = await server.inject({
       method: 'POST',
-      url: '/v1/streaks/daily_tailor_log/tailor_usr_90210/freezes/grant',
+      url: `/v1/streaks/daily_tailor_log/${freezeUser}/freezes/grant`,
       headers: {
         authorization: 'Bearer pk_live_zikfash_123'
       },
@@ -161,7 +162,7 @@ describe('StreakKit E2E API Integration', () => {
     // 2. Attempt with secret key should succeed with 200 OK
     const successRes = await server.inject({
       method: 'POST',
-      url: '/v1/streaks/daily_tailor_log/tailor_usr_90210/freezes/grant',
+      url: `/v1/streaks/daily_tailor_log/${freezeUser}/freezes/grant`,
       headers: {
         authorization: 'Bearer sk_live_zikfash_secret'
       },
@@ -169,6 +170,44 @@ describe('StreakKit E2E API Integration', () => {
     });
     assert.equal(successRes.statusCode, 200);
     const body = JSON.parse(successRes.body);
-    assert.equal(body.freezes.available, 4); // 2 default + 2 granted = 4
+    assert.equal(body.freezes.available, 2); // 2 granted
+  });
+
+  it('POST /v1/ping advances streak and returns state with embedUrl in single roundtrip', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/ping',
+      headers: {
+        authorization: 'Bearer pk_live_alify_456'
+      },
+      payload: {
+        ruleSlug: 'alify_playback',
+        externalUserId: 'listener_usr_77',
+        value: 3, // Complete target of 3 in 1 call
+        timezone: 'Africa/Lagos'
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.ruleSlug, 'alify_playback');
+    assert.equal(body.externalUserId, 'listener_usr_77');
+    assert.equal(body.currentStreak, 1);
+    assert.equal(body.status, 'ACTIVE_TODAY');
+    assert.equal(body.todayProgress.completed, true);
+    assert.equal(body.embedUrl, '/v1/embed/alify_playback/listener_usr_77');
+  });
+
+  it('GET /v1/embed/:ruleSlug/:userId serves the universal HTML dopamine UI', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/v1/embed/alify_playback/listener_usr_77'
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.headers['content-type'], 'text/html');
+    assert.ok(res.body.includes('Day Streak'));
+    assert.ok(res.body.includes('Share Milestone'));
+    assert.ok(res.body.includes('closeBtn'));
   });
 });

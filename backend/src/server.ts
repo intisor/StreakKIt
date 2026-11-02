@@ -6,6 +6,7 @@ import { seedDatabase } from './db/seed.js';
 import { registerEventRoutes } from './api/routes/events.js';
 import { registerStateRoutes } from './api/routes/state.js';
 import { registerFreezeRoutes } from './api/routes/freezes.js';
+import { registerEmbedRoutes } from './api/routes/embed.js';
 import { WebhookDispatcherWorker } from './workers/webhook-dispatcher.js';
 
 export async function buildServer() {
@@ -27,6 +28,7 @@ export async function buildServer() {
   await registerEventRoutes(fastify);
   await registerStateRoutes(fastify);
   await registerFreezeRoutes(fastify);
+  await registerEmbedRoutes(fastify);
 
   return fastify;
 }
