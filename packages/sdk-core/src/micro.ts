@@ -1,4 +1,13 @@
-// packages/sdk-core/src/micro.ts: Universal Micro-Client (< 35 lines)
+// packages/sdk-core/src/micro.ts: Universal Micro-Client with JSON Rule Declaration
+export interface StreakRuleConfig {
+  slug: string;
+  name?: string;
+  target?: number;
+  cadence?: 'DAILY' | 'EXEMPT_DAYS' | 'WEEKLY_QUOTA' | string;
+  gracePeriodMinutes?: number;
+  maxFreezes?: number;
+}
+
 export interface MicroPingOptions {
   endpoint?: string;
   publicKey: string;
@@ -6,6 +15,20 @@ export interface MicroPingOptions {
   userId: string;
   value?: number;
   timezone?: string;
+  ruleConfig?: StreakRuleConfig;
+}
+
+export async function syncRules(endpoint: string, publicKey: string, rules: StreakRuleConfig[]) {
+  const ep = (endpoint || 'http://localhost:3000').replace(/\/+$/, '');
+  const res = await fetch(`${ep}/v1/rules/sync`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${publicKey}`
+    },
+    body: JSON.stringify({ rules })
+  });
+  return res.json();
 }
 
 export async function pingStreak(options: MicroPingOptions) {
@@ -20,7 +43,8 @@ export async function pingStreak(options: MicroPingOptions) {
       ruleSlug: options.ruleSlug,
       externalUserId: options.userId,
       value: options.value || 1,
-      timezone: options.timezone || (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC')
+      timezone: options.timezone || (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'),
+      ruleConfig: options.ruleConfig
     })
   });
   return res.json();

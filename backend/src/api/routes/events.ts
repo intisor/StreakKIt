@@ -271,6 +271,17 @@ export async function registerEventRoutes(fastify: FastifyInstance) {
         value?: number;
         timezone?: string;
         metadata?: Record<string, unknown>;
+        ruleConfig?: {
+          name?: string;
+          target?: number;
+          targetValue?: number;
+          cadence?: string;
+          cadenceType?: string;
+          gracePeriodMinutes?: number;
+          maxFreezes?: number;
+          exemptDaysBitmask?: number;
+          milestoneDays?: number[];
+        };
       };
 
       if (!body.ruleSlug || !body.externalUserId) {
@@ -279,20 +290,75 @@ export async function registerEventRoutes(fastify: FastifyInstance) {
         });
       }
 
+      const ruleSlug = body.ruleSlug;
+      const externalUserId = body.externalUserId;
       const db = getDb();
       const nowUtc = new Date();
       const userTimezone = body.timezone || 'UTC';
       const value = typeof body.value === 'number' && body.value > 0 ? Math.floor(body.value) : 1;
 
       const result = await db.transaction(async (tx) => {
-        // 1. Fetch rule
-        const ruleRow = await tx.get<any>(
+        // 1. Fetch or auto-provision rule from developer JSON config
+        let ruleRow = await tx.get<any>(
           'SELECT * FROM streak_rules WHERE tenant_id = $1 AND slug = $2',
-          [tenant.id, body.ruleSlug]
+          [tenant.id, ruleSlug]
         );
 
+        const config = body.ruleConfig;
         if (!ruleRow) {
-          return null;
+          const newRuleId = crypto.randomUUID();
+          const target = Math.max(1, parseInt(String(config?.targetValue ?? config?.target ?? 1), 10));
+          const name = config?.name || ruleSlug.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+          const cadence = config?.cadenceType || config?.cadence || 'DAILY';
+          const grace = config?.gracePeriodMinutes ?? 120;
+          const freezes = config?.maxFreezes ?? 2;
+          const bitmask = config?.exemptDaysBitmask ?? 0;
+          const milestones = config?.milestoneDays || [3, 7, 14, 30, 50, 100, 365];
+
+          await tx.execute(
+            `INSERT INTO streak_rules (
+              id, tenant_id, slug, name, cadence_type, target_value,
+              exempt_days_bitmask, grace_period_minutes, max_freezes,
+              auto_consume_freeze, at_risk_lead_minutes, milestone_days
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, 120, $10)`,
+            [
+              newRuleId,
+              tenant.id,
+              ruleSlug,
+              name,
+              cadence,
+              target,
+              bitmask,
+              grace,
+              freezes,
+              JSON.stringify(milestones)
+            ]
+          );
+
+          ruleRow = {
+            id: newRuleId,
+            tenant_id: tenant.id,
+            slug: ruleSlug,
+            name,
+            cadence_type: cadence,
+            target_value: target,
+            exempt_days_bitmask: bitmask,
+            grace_period_minutes: grace,
+            max_freezes: freezes,
+            auto_consume_freeze: 1,
+            at_risk_lead_minutes: 120,
+            milestone_days: milestones,
+            created_at: nowUtc.toISOString()
+          };
+        } else if (config && (config.targetValue || config.target)) {
+          const target = Math.max(1, parseInt(String(config.targetValue ?? config.target), 10));
+          if (target !== ruleRow.target_value) {
+            await tx.execute(
+              'UPDATE streak_rules SET target_value = $1 WHERE id = $2',
+              [target, ruleRow.id]
+            );
+            ruleRow.target_value = target;
+          }
         }
 
         const rule: StreakRule = {

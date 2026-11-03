@@ -225,4 +225,76 @@ export async function registerRuleRoutes(fastify: FastifyInstance) {
       return reply.send({ status: 'deleted', slug });
     }
   );
+
+  // 5. POST /v1/rules/sync: Bulk sync rules directly from SDK JSON config
+  fastify.post(
+    '/v1/rules/sync',
+    { preHandler: authenticateApiKey },
+    async (request: AuthenticatedRequest, reply: FastifyReply) => {
+      const tenant = request.tenant!;
+      const body = (request.body || {}) as { rules?: Array<any> };
+      if (!body.rules || !Array.isArray(body.rules)) {
+        return reply.status(400).send({ error: 'rules array is required' });
+      }
+
+      const db = getDb();
+      const synced = [];
+
+      for (const r of body.rules) {
+        if (!r || !r.slug) continue;
+        const slug = r.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        const name = r.name || slug.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const cadence = r.cadenceType || r.cadence || 'DAILY';
+        const target = Math.max(1, parseInt(String(r.targetValue ?? r.target ?? 1), 10));
+        const grace = parseInt(String(r.gracePeriodMinutes ?? 120), 10);
+        const freezes = parseInt(String(r.maxFreezes ?? 2), 10);
+        const bitmask = parseInt(String(r.exemptDaysBitmask ?? 0), 10);
+        const milestones = Array.isArray(r.milestoneDays) ? r.milestoneDays : [3, 7, 14, 30, 50, 100, 365];
+
+        const existing = await db.get<any>(
+          'SELECT id FROM streak_rules WHERE tenant_id = $1 AND slug = $2',
+          [tenant.id, slug]
+        );
+
+        if (existing) {
+          await db.execute(
+            `UPDATE streak_rules SET
+              name = $1,
+              cadence_type = $2,
+              target_value = $3,
+              exempt_days_bitmask = $4,
+              grace_period_minutes = $5,
+              max_freezes = $6,
+              milestone_days = $7
+             WHERE id = $8`,
+            [name, cadence, target, bitmask, grace, freezes, JSON.stringify(milestones), existing.id]
+          );
+          synced.push({ slug, status: 'updated', target });
+        } else {
+          await db.execute(
+            `INSERT INTO streak_rules (
+              id, tenant_id, slug, name, cadence_type, target_value,
+              exempt_days_bitmask, grace_period_minutes, max_freezes,
+              auto_consume_freeze, at_risk_lead_minutes, milestone_days
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, 120, $10)`,
+            [
+              crypto.randomUUID(),
+              tenant.id,
+              slug,
+              name,
+              cadence,
+              target,
+              bitmask,
+              grace,
+              freezes,
+              JSON.stringify(milestones)
+            ]
+          );
+          synced.push({ slug, status: 'created', target });
+        }
+      }
+
+      return reply.send({ status: 'ok', synced });
+    }
+  );
 }
