@@ -7,6 +7,8 @@ import { registerEventRoutes } from './api/routes/events.js';
 import { registerStateRoutes } from './api/routes/state.js';
 import { registerFreezeRoutes } from './api/routes/freezes.js';
 import { registerEmbedRoutes } from './api/routes/embed.js';
+import { registerRuleRoutes } from './api/routes/rules.js';
+import { registerDashboardRoutes } from './api/routes/dashboard.js';
 import { WebhookDispatcherWorker } from './workers/webhook-dispatcher.js';
 
 export async function buildServer() {
@@ -24,11 +26,13 @@ export async function buildServer() {
     return { status: 'healthy', timestamp: new Date().toISOString() };
   });
 
-  // Register API routes
+  // Register API and developer studio routes
   await registerEventRoutes(fastify);
   await registerStateRoutes(fastify);
   await registerFreezeRoutes(fastify);
   await registerEmbedRoutes(fastify);
+  await registerRuleRoutes(fastify);
+  await registerDashboardRoutes(fastify);
 
   return fastify;
 }
@@ -49,6 +53,7 @@ export async function startServer() {
   try {
     await server.listen({ port, host });
     console.log(`[StreakKit API] Server listening on http://${host}:${port}`);
+    console.log(`[StreakKit Console] Developer Studio available at http://${host}:${port}/dashboard`);
   } catch (err) {
     server.log.error(err);
     dispatcher.stop();
@@ -69,5 +74,8 @@ export async function startServer() {
 }
 
 if (process.argv[1]?.endsWith('server.ts') || process.argv[1]?.endsWith('server.js')) {
-  startServer();
+  startServer().catch((err) => {
+    console.error('[StreakKit] Failed to start server:', err);
+    process.exit(1);
+  });
 }

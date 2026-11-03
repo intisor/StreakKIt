@@ -97,9 +97,9 @@ export async function seedDatabase(db = getDb()) {
         '018f0000-0000-7000-8000-000000000004',
         alifyId,
         'alify_playback',
-        'Daily Listening & Lyric Notes',
+        'Daily Listening & Engagement',
         'DAILY',
-        3, // 3 tracks observed or 1 lyric saved
+        1, // 1 track or active engagement per day
         0, // Daily (no days exempt)
         180, // 3-hour grace period
         2,
@@ -108,7 +108,12 @@ export async function seedDatabase(db = getDb()) {
         JSON.stringify([3, 7, 14, 30, 50, 100, 365])
       ]
     );
-    console.log('[Seed] Created rule: alify_playback (Daily, target 3)');
+    console.log('[Seed] Created rule: alify_playback (Daily, target 1)');
+  } else {
+    // Ensure target_value is 1 for existing installations
+    await db.execute(
+      `UPDATE streak_rules SET target_value = 1, name = 'Daily Listening & Engagement' WHERE slug = 'alify_playback'`
+    );
   }
 }
 
