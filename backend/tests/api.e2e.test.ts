@@ -196,10 +196,10 @@ describe('StreakKit E2E API Integration', () => {
       method: 'POST',
       url: '/v1/ping',
       headers: {
-        authorization: 'Bearer pk_live_alify_456'
+        authorization: 'Bearer pk_live_hujjify_456'
       },
       payload: {
-        ruleSlug: 'alify_playback',
+        ruleSlug: 'hujjify_playback',
         externalUserId: testUser,
         value: 1,
         timezone: 'Africa/Lagos'
@@ -208,18 +208,18 @@ describe('StreakKit E2E API Integration', () => {
 
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body);
-    assert.equal(body.ruleSlug, 'alify_playback');
+    assert.equal(body.ruleSlug, 'hujjify_playback');
     assert.equal(body.externalUserId, testUser);
     assert.equal(body.currentStreak, 1);
     assert.equal(body.status, 'ACTIVE_TODAY');
     assert.equal(body.todayProgress.completed, true);
-    assert.equal(body.embedUrl, `/v1/embed/alify_playback/${testUser}`);
+    assert.equal(body.embedUrl, `/v1/embed/hujjify_playback/${testUser}`);
   });
 
   it('GET /v1/embed/:ruleSlug/:userId serves the universal HTML dopamine UI', async () => {
     const res = await server.inject({
       method: 'GET',
-      url: '/v1/embed/alify_playback/listener_guest'
+      url: '/v1/embed/hujjify_playback/listener_guest'
     });
 
     assert.equal(res.statusCode, 200);
@@ -234,19 +234,19 @@ describe('StreakKit E2E API Integration', () => {
     const listRes = await server.inject({
       method: 'GET',
       url: '/v1/rules',
-      headers: { authorization: 'Bearer pk_live_alify_456' }
+      headers: { authorization: 'Bearer pk_live_hujjify_456' }
     });
     assert.equal(listRes.statusCode, 200);
     const listBody = JSON.parse(listRes.body);
     assert.ok(Array.isArray(listBody.rules));
-    assert.ok(listBody.rules.some((r: any) => r.slug === 'alify_playback'));
+    assert.ok(listBody.rules.some((r: any) => r.slug === 'hujjify_playback'));
 
     // 2. Create custom rule dynamically
     const newSlug = `streak_custom_${crypto.randomUUID().slice(0, 6)}`;
     const createRes = await server.inject({
       method: 'POST',
       url: '/v1/rules',
-      headers: { authorization: 'Bearer pk_live_alify_456' },
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
       payload: {
         slug: newSlug,
         name: 'Custom Developer Streak Rule',
@@ -265,7 +265,7 @@ describe('StreakKit E2E API Integration', () => {
     const updateRes = await server.inject({
       method: 'POST',
       url: '/v1/rules',
-      headers: { authorization: 'Bearer pk_live_alify_456' },
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
       payload: {
         slug: newSlug,
         name: 'Updated Rule Name',

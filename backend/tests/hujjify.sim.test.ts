@@ -28,10 +28,10 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
       method: 'POST',
       url: '/v1/ping',
       headers: {
-        authorization: 'Bearer pk_live_alify_456'
+        authorization: 'Bearer pk_live_hujjify_456'
       },
       payload: {
-        ruleSlug: 'alify_playback',
+        ruleSlug: 'hujjify_playback',
         externalUserId: testUserId,
         value: 1,
         timezone: 'Africa/Lagos',
@@ -41,7 +41,7 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
 
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body);
-    assert.equal(body.ruleSlug, 'alify_playback');
+    assert.equal(body.ruleSlug, 'hujjify_playback');
     assert.equal(body.todayProgress.current, 1);
     assert.equal(body.todayProgress.target, 1);
     assert.equal(body.todayProgress.completed, true);
@@ -55,10 +55,10 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
       method: 'POST',
       url: '/v1/ping',
       headers: {
-        authorization: 'Bearer pk_live_alify_456'
+        authorization: 'Bearer pk_live_hujjify_456'
       },
       payload: {
-        ruleSlug: 'alify_playback',
+        ruleSlug: 'hujjify_playback',
         externalUserId: testUserId,
         value: 1,
         timezone: 'Africa/Lagos',
@@ -76,7 +76,7 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
   it('Step 3: Tapping Streak Card in Hujjify loads universal animated embed UI in WebView', async () => {
     const res = await server.inject({
       method: 'GET',
-      url: `/v1/embed/alify_playback/${testUserId}`
+      url: `/v1/embed/hujjify_playback/${testUserId}`
     });
 
     assert.equal(res.statusCode, 200);

@@ -1,4 +1,4 @@
-// db/seed.ts: Seeds initial tenants & rules for ZikFash and Alify
+// db/seed.ts: Seeds initial tenants & rules for ZikFash and Hujjify
 import crypto from 'node:crypto';
 import { getDb } from '../config/db.js';
 
@@ -58,35 +58,36 @@ export async function seedDatabase(db = getDb()) {
     console.log('[Seed] Created rule: daily_tailor_log (Sundays exempt, target 1)');
   }
 
-  // 2. Alify Tenant
-  const alifyId = '018f0000-0000-7000-8000-000000000003';
-  const alifyPk = 'pk_live_alify_456';
-  const alifySk = 'sk_live_alify_secret';
-  const alifySkHash = crypto.createHash('sha256').update(alifySk).digest('hex');
+  // 2. Hujjify Tenant
+  const hujjifyId = '018f0000-0000-7000-8000-000000000003';
+  const hujjifyPk = 'pk_live_hujjify_456';
+  const hujjifySk = 'sk_live_hujjify_secret';
+  const hujjifySkHash = crypto.createHash('sha256').update(hujjifySk).digest('hex');
 
-  const existingAlify = await db.get('SELECT id FROM tenants WHERE public_key = $1', [alifyPk]);
-  if (!existingAlify) {
+  const existingHujjify = await db.get('SELECT id FROM tenants WHERE public_key = $1', [hujjifyPk]);
+  if (!existingHujjify) {
     await db.execute(
       `INSERT INTO tenants (id, name, public_key, secret_key_hash, webhook_url, webhook_secret)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        alifyId,
-        'Alify Music & Lyric Ledger',
-        alifyPk,
-        alifySkHash,
-        'https://api.alify.app/webhooks/streakkit',
-        'whsec_alify_test_secret_456'
+        hujjifyId,
+        'Hujjify Music & Lyric Ledger',
+        hujjifyPk,
+        hujjifySkHash,
+        'https://api.hujjify.app/webhooks/streakkit',
+        'whsec_hujjify_test_secret_456'
       ]
     );
-    console.log('[Seed] Created tenant: Alify');
+    console.log('[Seed] Created tenant: Hujjify');
   }
 
-  // Alify Rule: alify_playback
-  const existingAlifyRule = await db.get(
+  // Hujjify Rule: hujjify_playback
+  const existingHujjifyRule = await db.get(
     'SELECT id FROM streak_rules WHERE slug = $1',
-    ['alify_playback']
+    ['hujjify_playback']
   );
-  if (!existingAlifyRule) {
+  if (!existingHujjifyRule) {
+    const tenantRow = await db.get('SELECT id FROM tenants WHERE public_key = $1', [hujjifyPk]);
     await db.execute(
       `INSERT INTO streak_rules (
         id, tenant_id, slug, name, cadence_type, target_value,
@@ -95,24 +96,24 @@ export async function seedDatabase(db = getDb()) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         '018f0000-0000-7000-8000-000000000004',
-        alifyId,
-        'alify_playback',
+        tenantRow ? tenantRow.id : hujjifyId,
+        'hujjify_playback',
         'Daily Listening & Engagement',
         'DAILY',
-        1, // 1 track or active engagement per day
-        0, // Daily (no days exempt)
-        180, // 3-hour grace period
+        1,
+        0,
+        180,
         2,
         1,
-        120, // 2-hour lead time for at-risk notifications
+        120,
         JSON.stringify([3, 7, 14, 30, 50, 100, 365])
       ]
     );
-    console.log('[Seed] Created rule: alify_playback (Daily, target 1)');
+    console.log('[Seed] Created rule: hujjify_playback (Daily, target 1)');
   } else {
-    // Ensure target_value is 1 for existing installations
     await db.execute(
-      `UPDATE streak_rules SET target_value = 1, name = 'Daily Listening & Engagement' WHERE slug = 'alify_playback'`
+      `UPDATE streak_rules SET target_value = 1, name = 'Daily Listening & Engagement' WHERE id = $1`,
+      [existingHujjifyRule.id]
     );
   }
 }

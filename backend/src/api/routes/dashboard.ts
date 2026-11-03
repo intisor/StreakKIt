@@ -209,7 +209,7 @@ export async function registerDashboardRoutes(fastify: FastifyInstance) {
     <div class="tenant-select-bar">
       <span>Tenant API Key:</span>
       <select id="tenantSelect" onchange="onTenantChanged()">
-        <option value="pk_live_alify_456" selected>Alify Music & Lyrics (pk_live_alify_456)</option>
+        <option value="pk_live_hujjify_456" selected>Hujjify Music & Lyrics (pk_live_hujjify_456)</option>
         <option value="pk_live_zikfash_123">ZikFash Tailor Ledger (pk_live_zikfash_123)</option>
         <option value="CUSTOM">Custom API Key...</option>
       </select>
@@ -250,7 +250,7 @@ export async function registerDashboardRoutes(fastify: FastifyInstance) {
             <div class="form-row">
               <div class="form-group">
                 <label>Rule Slug (Unique ID)</label>
-                <input type="text" id="ruleSlug" placeholder="e.g. alify_playback" required>
+                <input type="text" id="ruleSlug" placeholder="e.g. hujjify_playback" required>
               </div>
               <div class="form-group">
                 <label>Display Name</label>
@@ -386,7 +386,7 @@ export async function registerDashboardRoutes(fastify: FastifyInstance) {
       </div>
       <div class="mobile-frame-container">
         <div class="mobile-frame">
-          <iframe id="embedFrame" src="/v1/embed/alify_playback/user_default"></iframe>
+          <iframe id="embedFrame" src="/v1/embed/hujjify_playback/user_default"></iframe>
         </div>
       </div>
     </div>
@@ -406,25 +406,25 @@ export async function registerDashboardRoutes(fastify: FastifyInstance) {
 StreakKit.init(context = this)
 
 // 2. Ping whenever the user takes an action (e.g. opens app or plays a song)
-StreakKit.ping(context = this, ruleSlug = "alify_playback")
+StreakKit.ping(context = this, ruleSlug = "hujjify_playback")
 
 // 3. Open the animated dopamine embed modal anywhere
-StreakKit.showModal(activity = this, ruleSlug = "alify_playback")</pre>
+StreakKit.showModal(activity = this, ruleSlug = "hujjify_playback")</pre>
 
         <h4 style="color: var(--accent); margin: 20px 0 8px 0; font-size: 14px;">Web (TypeScript / React / Vue)</h4>
         <pre class="json-box" style="color: #a5f3fc; max-height: 220px;">import { StreakClient } from '@streakkit/sdk-core';
 
-const client = new StreakClient({ publicKey: 'pk_live_alify_456' });
+const client = new StreakClient({ publicKey: 'pk_live_hujjify_456' });
 
 // Ping and get full updated state + embed URL
-const state = await client.ping('alify_playback', 'user_123');
+const state = await client.ping('hujjify_playback', 'user_123');
 console.log('Current streak:', state.currentStreak);</pre>
       </div>
     </div>
   </main>
 
   <script>
-    let currentApiKey = 'pk_live_alify_456';
+    let currentApiKey = 'pk_live_hujjify_456';
     let loadedRules = [];
 
     function getApiKey() {
@@ -595,7 +595,7 @@ console.log('Current streak:', state.currentStreak);</pre>
 
     // Simulator Functions
     async function simulatePing() {
-      const ruleSlug = document.getElementById('simRuleSelect').value || 'alify_playback';
+      const ruleSlug = document.getElementById('simRuleSelect').value || 'hujjify_playback';
       const userId = document.getElementById('simUserId').value.trim() || 'user_default';
       const val = parseInt(document.getElementById('simValue').value, 10) || 1;
 
@@ -623,7 +623,7 @@ console.log('Current streak:', state.currentStreak);</pre>
     }
 
     async function simulateInspect() {
-      const ruleSlug = document.getElementById('simRuleSelect').value || 'alify_playback';
+      const ruleSlug = document.getElementById('simRuleSelect').value || 'hujjify_playback';
       const userId = document.getElementById('simUserId').value.trim() || 'user_default';
 
       try {
@@ -640,14 +640,14 @@ console.log('Current streak:', state.currentStreak);</pre>
     }
 
     async function simulateGrantFreeze() {
-      const ruleSlug = document.getElementById('simRuleSelect').value || 'alify_playback';
+      const ruleSlug = document.getElementById('simRuleSelect').value || 'hujjify_playback';
       const userId = document.getElementById('simUserId').value.trim() || 'user_default';
 
       try {
         const res = await fetch(\`/v1/streaks/\${encodeURIComponent(ruleSlug)}/\${encodeURIComponent(userId)}/freezes/grant\`, {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer sk_live_alify_secret',
+            'Authorization': 'Bearer sk_live_hujjify_secret',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ count: 1 })
@@ -680,7 +680,7 @@ console.log('Current streak:', state.currentStreak);</pre>
     }
 
     function reloadEmbedFrame() {
-      const ruleSlug = document.getElementById('simRuleSelect')?.value || 'alify_playback';
+      const ruleSlug = document.getElementById('simRuleSelect')?.value || 'hujjify_playback';
       const userId = document.getElementById('simUserId')?.value.trim() || 'user_default';
       const frame = document.getElementById('embedFrame');
       frame.src = \`/v1/embed/\${encodeURIComponent(ruleSlug)}/\${encodeURIComponent(userId)}?t=\` + Date.now();
