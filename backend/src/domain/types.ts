@@ -40,6 +40,12 @@ export interface StreakRule {
   autoConsumeFreeze: boolean;
   atRiskLeadMinutes: number;
   milestoneDays: number[];
+  daysOff?: number[];
+  evaluationMode?: 'OR' | 'AND';
+  freezeStartCount?: number;
+  freezeMaxCount?: number;
+  freezeAutoEarnDays?: number;
+  restoreWindowDays?: number;
   createdAt: string;
 }
 
@@ -56,6 +62,8 @@ export interface UserStreak {
   currentWindowProgress: number;
   freezesAvailable: number;
   lastFreezeConsumedDate: string | null;
+  lastBrokenStreakLength?: number;
+  lastBrokenDate?: string | null;
   windowExpiresAtUtc: string | null;
   atRiskNotifiedForDate: string | null;
   recentHistory: Array<{ date: string; state: DayHistoryState }>;

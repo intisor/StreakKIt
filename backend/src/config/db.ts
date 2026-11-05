@@ -93,6 +93,12 @@ class SqliteAdapter implements DbAdapter {
         auto_consume_freeze INTEGER NOT NULL DEFAULT 1,
         at_risk_lead_minutes INTEGER NOT NULL DEFAULT 120,
         milestone_days TEXT NOT NULL DEFAULT '[3,7,14,30,50,100,365]',
+        days_off TEXT NOT NULL DEFAULT '[]',
+        evaluation_mode TEXT NOT NULL DEFAULT 'OR',
+        freeze_start_count INTEGER NOT NULL DEFAULT 1,
+        freeze_max_count INTEGER NOT NULL DEFAULT 3,
+        freeze_auto_earn_days INTEGER NOT NULL DEFAULT 0,
+        restore_window_days INTEGER NOT NULL DEFAULT 90,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(tenant_id, slug)
       );
@@ -110,6 +116,8 @@ class SqliteAdapter implements DbAdapter {
         current_window_progress INTEGER NOT NULL DEFAULT 0,
         freezes_available INTEGER NOT NULL DEFAULT 0,
         last_freeze_consumed_date TEXT,
+        last_broken_streak_length INTEGER NOT NULL DEFAULT 0,
+        last_broken_date TEXT,
         window_expires_at_utc TEXT,
         at_risk_notified_for_date TEXT,
         recent_history TEXT NOT NULL DEFAULT '[]',
@@ -121,6 +129,46 @@ class SqliteAdapter implements DbAdapter {
 
       CREATE INDEX IF NOT EXISTS idx_user_streaks_at_risk 
       ON user_streaks (window_expires_at_utc);
+
+      CREATE TABLE IF NOT EXISTS streak_pauses (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        rule_id TEXT NOT NULL REFERENCES streak_rules(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_streak_pauses_user 
+      ON streak_pauses (rule_id, external_user_id, start_date, end_date);
+
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        rule_id TEXT NOT NULL REFERENCES streak_rules(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        custom_target INTEGER,
+        days_off_override TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(rule_id, external_user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS streak_history (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        rule_id TEXT NOT NULL REFERENCES streak_rules(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        period_date TEXT NOT NULL,
+        status TEXT NOT NULL,
+        streak_length INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_streak_history_user_date
+      ON streak_history (rule_id, external_user_id, period_date);
 
       CREATE TABLE IF NOT EXISTS streak_events (
         event_id TEXT PRIMARY KEY,
@@ -154,6 +202,24 @@ class SqliteAdapter implements DbAdapter {
       CREATE INDEX IF NOT EXISTS idx_webhook_outbox_pending 
       ON webhook_outbox (next_attempt_at);
     `);
+
+    // Safely apply alterations for existing database instances
+    const tryAddColumn = (sql: string) => {
+      try {
+        this.db.exec(sql);
+      } catch {
+        // column already exists
+      }
+    };
+
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN days_off TEXT NOT NULL DEFAULT '[]';`);
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN evaluation_mode TEXT NOT NULL DEFAULT 'OR';`);
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN freeze_start_count INTEGER NOT NULL DEFAULT 1;`);
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN freeze_max_count INTEGER NOT NULL DEFAULT 3;`);
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN freeze_auto_earn_days INTEGER NOT NULL DEFAULT 0;`);
+    tryAddColumn(`ALTER TABLE streak_rules ADD COLUMN restore_window_days INTEGER NOT NULL DEFAULT 90;`);
+    tryAddColumn(`ALTER TABLE user_streaks ADD COLUMN last_broken_streak_length INTEGER NOT NULL DEFAULT 0;`);
+    tryAddColumn(`ALTER TABLE user_streaks ADD COLUMN last_broken_date TEXT;`);
   }
 }
 

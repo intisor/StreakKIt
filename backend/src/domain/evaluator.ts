@@ -15,6 +15,7 @@ import {
   listDatesBetween,
   isExemptDay
 } from './time-window.js';
+import { calculateAutoEarnFreezes } from './features.js';
 import { VerifiedEvent } from './anticheat.js';
 
 export interface EvaluationResult {
@@ -111,6 +112,7 @@ export function evaluateEvent(
   }> = [];
 
   let currentStreak = userStreak.currentStreak;
+  const prevStreak = userStreak.currentStreak;
   let highestStreak = userStreak.highestStreak;
   let freezesAvailable = userStreak.freezesAvailable;
   let lastFreezeConsumedDate = userStreak.lastFreezeConsumedDate;
@@ -275,6 +277,10 @@ export function evaluateEvent(
             }
           });
 
+          // Record last broken streak for restoration window
+          userStreak.lastBrokenStreakLength = currentStreak;
+          userStreak.lastBrokenDate = missedDates[0] || L_event;
+
           for (const md of missedDates) {
             history.push({ date: md, state: 'MISSED' });
           }
@@ -293,6 +299,21 @@ export function evaluateEvent(
             }
           });
         }
+      }
+    }
+
+    // Auto-earn freeze check if rule has freezeAutoEarnDays configured
+    if (rule.freezeAutoEarnDays && rule.freezeAutoEarnDays > 0) {
+      const earnRes = calculateAutoEarnFreezes(
+        prevStreak,
+        currentStreak,
+        freezesAvailable,
+        rule.freezeMaxCount ?? rule.maxFreezes ?? 3,
+        rule.freezeAutoEarnDays,
+        1
+      );
+      if (earnRes.freezesAwarded > 0) {
+        freezesAvailable = earnRes.newFreezesAvailable;
       }
     }
 

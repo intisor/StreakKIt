@@ -8,6 +8,7 @@ import { registerStateRoutes } from './api/routes/state.js';
 import { registerFreezeRoutes } from './api/routes/freezes.js';
 import { registerEmbedRoutes } from './api/routes/embed.js';
 import { registerRuleRoutes } from './api/routes/rules.js';
+import { registerMoatRoutes } from './api/routes/moats.js';
 import { registerDashboardRoutes } from './api/routes/dashboard.js';
 import { WebhookDispatcherWorker } from './workers/webhook-dispatcher.js';
 
@@ -32,6 +33,7 @@ export async function buildServer() {
   await registerFreezeRoutes(fastify);
   await registerEmbedRoutes(fastify);
   await registerRuleRoutes(fastify);
+  await registerMoatRoutes(fastify);
   await registerDashboardRoutes(fastify);
 
   return fastify;

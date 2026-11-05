@@ -35,7 +35,10 @@ data class StreakRule(
     val target: Int = 1,
     val cadence: String = "DAILY",
     val gracePeriodMinutes: Int = 120,
-    val maxFreezes: Int = 2
+    val maxFreezes: Int = 2,
+    val daysOff: List<Int> = emptyList(),
+    val freezeAutoEarnDays: Int = 0,
+    val restoreWindowDays: Int = 90
 )
 
 /**
@@ -338,5 +341,180 @@ object StreakKit {
             dialog.setContentView(webView)
             dialog.show()
         }
+    }
+
+    /**
+     * Trophy-Grade Moat: Restore a broken streak within the 90-day restore window.
+     */
+    fun restore(
+        ruleSlug: String,
+        userId: String = "user_default",
+        onComplete: ((Boolean, Int, String) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+            put("timezone", TimeZone.getDefault().id)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/restore")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete?.invoke(false, 0, e.message ?: "Network error") }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val success = json.optBoolean("success", false)
+                val len = json.optInt("restoredStreakLength", 0)
+                val msg = json.optString("message", "")
+                mainHandler.post { onComplete?.invoke(success, len, msg) }
+            }
+        })
+    }
+
+    /**
+     * Trophy-Grade Moat: Schedule a vacation pause.
+     */
+    fun pause(
+        ruleSlug: String,
+        userId: String = "user_default",
+        startDate: String,
+        endDate: String,
+        onComplete: ((Boolean, String?) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+            put("startDate", startDate)
+            put("endDate", endDate)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/pause")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete?.invoke(false, e.message) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val success = response.isSuccessful
+                val respStr = response.body?.string()
+                mainHandler.post { onComplete?.invoke(success, respStr) }
+            }
+        })
+    }
+
+    /**
+     * Trophy-Grade Moat: Retrieve ranked friends streaks.
+     */
+    fun getFriendsStreak(
+        ruleSlug: String,
+        userIds: List<String>,
+        onResult: (JSONArray) -> Unit
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("userIds", JSONArray(userIds))
+            put("timezone", TimeZone.getDefault().id)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/friends")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult(JSONArray()) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val rankings = json.optJSONArray("rankings") ?: JSONArray()
+                mainHandler.post { onResult(rankings) }
+            }
+        })
+    }
+
+    /**
+     * Trophy-Grade Moat: Retrieve Wrapped / Year in Review summary.
+     */
+    fun getWrapped(
+        ruleSlug: String,
+        userId: String = "user_default",
+        year: Int = 2026,
+        onResult: (JSONObject?) -> Unit
+    ) {
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/wrapped?ruleSlug=${Uri.encode(ruleSlug)}&externalUserId=${Uri.encode(userId)}&year=$year")
+            .header("Authorization", "Bearer $publicKey")
+            .get()
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult(null) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val wrapped = json.optJSONObject("wrapped")
+                mainHandler.post { onResult(wrapped) }
+            }
+        })
+    }
+
+    /**
+     * Trophy-Grade Moat: Set per-user custom targets and rest days.
+     */
+    fun setUserPreferences(
+        ruleSlug: String,
+        userId: String = "user_default",
+        customTarget: Int? = null,
+        daysOff: List<Int>? = null,
+        enabled: Boolean = true,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+            if (customTarget != null) put("customTarget", customTarget)
+            if (daysOff != null) put("daysOffOverride", JSONArray(daysOff))
+            put("enabled", enabled)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/preferences")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete?.invoke(false) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { onComplete?.invoke(response.isSuccessful) }
+            }
+        })
     }
 }
