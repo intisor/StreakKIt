@@ -12,7 +12,7 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         ruleSlug: string;
         externalUserId: string;
       };
-      const query = request.query as { timezone?: string };
+      const query = request.query as { timezone?: string; animationUrl?: string };
 
       const db = getDb();
       const nowUtc = new Date();
@@ -108,13 +108,13 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
       }
 
       const state = evaluateStateOnRead(userStreak, rule, nowUtc);
-      const html = renderEmbedHtml(state, rule.name);
+      const html = renderEmbedHtml(state, rule.name, query.animationUrl);
       return reply.type('text/html').send(html);
     }
   );
 }
 
-function renderEmbedHtml(state: any, ruleName: string): string {
+function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: string): string {
   const streak = state.currentStreak || 0;
   const highest = state.highestStreak || streak;
   const status = state.status || 'PENDING_TODAY';
@@ -179,6 +179,7 @@ function renderEmbedHtml(state: any, ruleName: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>${ruleName} Streak</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.13.0/lottie.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -234,11 +235,23 @@ function renderEmbedHtml(state: any, ruleName: string): string {
       position: relative;
     }
     .flame-hero {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 8px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .flame-fallback {
       font-size: 64px;
       line-height: 1;
-      margin-bottom: 8px;
       filter: drop-shadow(${glow});
       animation: float 2.5s ease-in-out infinite;
+    }
+    #lottie-container {
+      width: 100%;
+      height: 100%;
     }
     .streak-num {
       font-size: 42px;
@@ -360,7 +373,10 @@ function renderEmbedHtml(state: any, ruleName: string): string {
   </div>
 
   <div class="card">
-    <div class="flame-hero">🔥</div>
+    <div class="flame-hero">
+      <div id="lottie-container"></div>
+      <div class="flame-fallback" id="flameFallback">${status === 'FROZEN' ? '❄️' : '🔥'}</div>
+    </div>
     <div class="streak-num">${streak}</div>
     <div class="streak-label">Day Streak</div>
     <span class="status-badge">${statusText}</span>
@@ -399,6 +415,36 @@ function renderEmbedHtml(state: any, ruleName: string): string {
   </div>
 
   <script>
+    // Lottie Animation Player with Graceful Fallback
+    (function initLottie() {
+      var container = document.getElementById('lottie-container');
+      var fallback = document.getElementById('flameFallback');
+      if (!window.lottie || !container) return;
+
+      var defaultFlameUrl = 'https://raw.githubusercontent.com/henriquegpb/rodada/main/components/streak/fire-streak.json';
+      var animUrl = ${customAnimationUrl ? `'${customAnimationUrl}'` : 'defaultFlameUrl'};
+
+      try {
+        var anim = window.lottie.loadAnimation({
+          container: container,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          path: animUrl
+        });
+
+        anim.addEventListener('DOMLoaded', function() {
+          if (fallback) fallback.style.display = 'none';
+        });
+
+        anim.addEventListener('data_failed', function() {
+          if (fallback) fallback.style.display = 'block';
+        });
+      } catch (e) {
+        if (fallback) fallback.style.display = 'block';
+      }
+    })();
+
     // Native Bridge & Close Handler
     document.getElementById('closeBtn').addEventListener('click', () => {
       // 1. PostMessage for Web / iframe
