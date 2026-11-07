@@ -175,7 +175,58 @@ StreakKit embeds a hardware-accelerated `lottie-web` runtime into its universal 
 
 ---
 
-## 6. HTTP REST API Quick Reference
+## 6. Visual Calendar & Date UI (Duolingo-Grade Monthly View)
+
+### Who fulfills calendar, date UIs?
+**StreakKit fulfills it natively, end-to-end.** There is zero reason for a developer to implement midnight timezone math, leap year day calculations, or complex 7-column calendar grids.
+
+StreakKit provides two complementary delivery models:
+
+### 6.1 Drop-In Universal Visual Calendar
+Every call to `GET /v1/embed/:ruleSlug/:userId` (or `client.showModal()` / Android `StreakKit.showModal()`) renders an interactive, responsive monthly calendar:
+- **Header:** Interactive month navigation (`‹ November 2026 ›`) with instant client-side month flipping.
+- **7-Column Grid:** Standard Sunday–Saturday columns (`S M T W T F S`).
+- **Day Badges:**
+  - `🔥 COMPLETED`: Gold flame badge with warm glow (`#f59e0b`).
+  - `❄️ FROZEN`: Cyan ice-crystal shield (`#38bdf8`) indicating a preserved freeze.
+  - `⏸️ PAUSED`: Purple badge (`#818cf8`) for approved vacation/sick pauses.
+  - `💤 EXEMPT`: Muted dash for scheduled rest days / weekend exemptions.
+  - `⭕ TODAY`: Pulsing halo ring highlighting the active window.
+  - `⚪ MISSED`: Muted dark outline for past incomplete days.
+- **✨ Perfect Week Grouping:** Highlighted banners for weeks where non-exempt days were 100% completed or frozen.
+- **View Switcher:** Seamless tab toggle between `📅 Month Calendar` and `⚡ 10-Day Strip`.
+
+### 6.2 Headless JSON Calendar API (`GET /v1/streaks/:ruleSlug/:userId/calendar`)
+For developers building custom Jetpack Compose, SwiftUI, React Native, or Flutter components:
+
+```typescript
+// Via TypeScript / JavaScript SDK:
+const cal = await streakkit.getCalendar('daily_workout', 2026, 11);
+
+// JSON Response:
+{
+  "ruleSlug": "daily_workout",
+  "externalUserId": "user_123",
+  "year": 2026,
+  "month": 11,
+  "monthName": "November",
+  "daysInMonth": 30,
+  "firstDayOfWeek": 0, // 0 = Sunday
+  "activeDaysCount": 24,
+  "frozenDaysCount": 1,
+  "perfectWeeks": [0, 1, 2],
+  "days": [
+    { "date": "2026-11-01", "day": 1, "dayOfWeek": 0, "state": "COMPLETED", "streakLength": 10 },
+    { "date": "2026-11-02", "day": 2, "dayOfWeek": 1, "state": "COMPLETED", "streakLength": 11 },
+    { "date": "2026-11-03", "day": 3, "dayOfWeek": 2, "state": "FROZEN", "streakLength": 11 },
+    { "date": "2026-11-07", "day": 7, "dayOfWeek": 6, "state": "ACTIVE_TODAY", "isToday": true }
+  ]
+}
+```
+
+---
+
+## 7. HTTP REST API Quick Reference
 
 | Method | Route | Description |
 | :--- | :--- | :--- |
@@ -186,5 +237,7 @@ StreakKit embeds a hardware-accelerated `lottie-web` runtime into its universal 
 | `POST` | `/v1/streak/friends` | Batch query ranking streaks across user IDs |
 | `GET` | `/v1/streak/wrapped` | Generates annual Wrapped engagement analytics |
 | `POST` | `/v1/streak/preferences` | Sets custom daily target and rest-day overrides |
-| `GET` | `/v1/embed/:ruleSlug/:userId` | Serves the universal animated 60fps dopamine HTML UI |
+| `GET` | `/v1/streaks/:ruleSlug/:userId/calendar` | Headless JSON monthly calendar (days 1..31, states, perfect weeks) |
+| `GET` | `/v1/embed/:ruleSlug/:userId` | Serves universal animated HTML UI with interactive Month Calendar |
+| `GET` | `/v1/embed/:ruleSlug/:userId/calendar` | Headless embed calendar data for dynamic month navigation |
 | `POST` | `/v1/rules/sync` | Batch registers/syncs developer rules |

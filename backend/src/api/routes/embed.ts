@@ -3,8 +3,17 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { getDb } from '../../config/db.js';
 import { StreakRule, UserStreak } from '../../domain/types.js';
 import { evaluateStateOnRead } from '../../domain/evaluator.js';
+import { computeLogicalDate } from '../../domain/time-window.js';
+import {
+  generateMonthCalendar,
+  MonthCalendarDTO,
+  CalendarDayDTO,
+  StreakHistoryEntry,
+  StreakPauseEntry
+} from '../../domain/calendar.js';
 
 export async function registerEmbedRoutes(fastify: FastifyInstance) {
+  // 1. Full HTML Dopamine Embed UI
   fastify.get(
     '/v1/embed/:ruleSlug/:externalUserId',
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -108,44 +117,251 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
       }
 
       const state = evaluateStateOnRead(userStreak, rule, nowUtc);
-      const html = renderEmbedHtml(state, rule.name, query.animationUrl);
+      const todayLogicalDate = computeLogicalDate(nowUtc, userTimezone, rule.gracePeriodMinutes);
+      const [todayYear, todayMonth] = todayLogicalDate.split('-').map(Number);
+
+      // Fetch history & pauses for month calendar
+      const historyRows = (await db.query<StreakHistoryEntry>(
+        'SELECT period_date, status, streak_length FROM streak_history WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      )) || [];
+
+      const pauseRows = (await db.query<StreakPauseEntry>(
+        'SELECT start_date, end_date FROM streak_pauses WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      )) || [];
+
+      const prefRow = await db.get<any>(
+        'SELECT days_off_override FROM user_preferences WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      );
+      const userDaysOff: number[] = prefRow?.days_off_override ? JSON.parse(prefRow.days_off_override) : [];
+
+      const initialCalendar = generateMonthCalendar(
+        todayYear,
+        todayMonth,
+        todayLogicalDate,
+        rule,
+        userStreak,
+        historyRows,
+        pauseRows,
+        userDaysOff
+      );
+
+      const html = renderEmbedHtml(
+        state,
+        rule.name,
+        rule.slug,
+        externalUserId,
+        userTimezone,
+        initialCalendar,
+        query.animationUrl
+      );
       return reply.type('text/html').send(html);
+    }
+  );
+
+  // 2. Headless Embed Calendar Data API (for client-side month toggling)
+  fastify.get(
+    '/v1/embed/:ruleSlug/:externalUserId/calendar',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { ruleSlug, externalUserId } = request.params as {
+        ruleSlug: string;
+        externalUserId: string;
+      };
+      const query = request.query as { timezone?: string; year?: string; month?: string };
+
+      const db = getDb();
+      const nowUtc = new Date();
+      const userTimezone = query.timezone || 'UTC';
+
+      const ruleRow = await db.get<any>(
+        'SELECT * FROM streak_rules WHERE slug = $1',
+        [ruleSlug]
+      );
+
+      if (!ruleRow) {
+        return reply.status(404).send({ error: `Rule not found: ${ruleSlug}` });
+      }
+
+      const rule: StreakRule = {
+        id: ruleRow.id,
+        tenantId: ruleRow.tenant_id,
+        slug: ruleRow.slug,
+        name: ruleRow.name,
+        cadenceType: ruleRow.cadence_type,
+        targetValue: ruleRow.target_value,
+        exemptDaysBitmask: ruleRow.exempt_days_bitmask,
+        gracePeriodMinutes: ruleRow.grace_period_minutes,
+        maxFreezes: ruleRow.max_freezes,
+        autoConsumeFreeze: Boolean(ruleRow.auto_consume_freeze),
+        atRiskLeadMinutes: ruleRow.at_risk_lead_minutes || 120,
+        milestoneDays: typeof ruleRow.milestone_days === 'string'
+          ? JSON.parse(ruleRow.milestone_days)
+          : ruleRow.milestone_days,
+        createdAt: ruleRow.created_at
+      };
+
+      const userStreakRow = await db.get<any>(
+        'SELECT * FROM user_streaks WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      );
+
+      let userStreak: UserStreak;
+      if (!userStreakRow) {
+        userStreak = {
+          id: 'temp_user',
+          tenantId: rule.tenantId,
+          ruleId: rule.id,
+          externalUserId,
+          timezone: userTimezone,
+          currentStreak: 0,
+          highestStreak: 0,
+          lastCompletedLogicalDate: null,
+          currentLogicalDate: null,
+          currentWindowProgress: 0,
+          freezesAvailable: rule.maxFreezes,
+          lastFreezeConsumedDate: null,
+          windowExpiresAtUtc: null,
+          atRiskNotifiedForDate: null,
+          recentHistory: [],
+          lastClientEventUtc: null,
+          lastEventHash: null,
+          updatedAt: nowUtc.toISOString()
+        };
+      } else {
+        userStreak = {
+          id: userStreakRow.id,
+          tenantId: userStreakRow.tenant_id,
+          ruleId: userStreakRow.rule_id,
+          externalUserId: userStreakRow.external_user_id,
+          timezone: query.timezone || userStreakRow.timezone || 'UTC',
+          currentStreak: userStreakRow.current_streak,
+          highestStreak: userStreakRow.highest_streak,
+          lastCompletedLogicalDate: userStreakRow.last_completed_logical_date,
+          currentLogicalDate: userStreakRow.current_logical_date,
+          currentWindowProgress: userStreakRow.current_window_progress,
+          freezesAvailable: userStreakRow.freezes_available,
+          lastFreezeConsumedDate: userStreakRow.last_freeze_consumed_date,
+          windowExpiresAtUtc: userStreakRow.window_expires_at_utc,
+          atRiskNotifiedForDate: userStreakRow.at_risk_notified_for_date,
+          recentHistory: typeof userStreakRow.recent_history === 'string'
+            ? JSON.parse(userStreakRow.recent_history)
+            : userStreakRow.recent_history || [],
+          lastClientEventUtc: userStreakRow.last_client_event_utc,
+          lastEventHash: userStreakRow.last_event_hash,
+          updatedAt: userStreakRow.updated_at
+        };
+      }
+
+      const todayLogicalDate = computeLogicalDate(nowUtc, userTimezone, rule.gracePeriodMinutes);
+      const [todayYear, todayMonth] = todayLogicalDate.split('-').map(Number);
+
+      const targetYear = query.year ? parseInt(query.year, 10) : todayYear;
+      const targetMonth = query.month ? parseInt(query.month, 10) : todayMonth;
+
+      const historyRows = (await db.query<StreakHistoryEntry>(
+        'SELECT period_date, status, streak_length FROM streak_history WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      )) || [];
+
+      const pauseRows = (await db.query<StreakPauseEntry>(
+        'SELECT start_date, end_date FROM streak_pauses WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      )) || [];
+
+      const prefRow = await db.get<any>(
+        'SELECT days_off_override FROM user_preferences WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      );
+      const userDaysOff: number[] = prefRow?.days_off_override ? JSON.parse(prefRow.days_off_override) : [];
+
+      const calendar = generateMonthCalendar(
+        targetYear,
+        targetMonth,
+        todayLogicalDate,
+        rule,
+        userStreak,
+        historyRows,
+        pauseRows,
+        userDaysOff
+      );
+
+      return reply.status(200).send(calendar);
     }
   );
 }
 
-function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: string): string {
+function renderCalendarCellsHtml(calendar: MonthCalendarDTO): string {
+  let html = '';
+  // Empty padding cells before first day of month
+  for (let i = 0; i < calendar.firstDayOfWeek; i++) {
+    html += '<div class="cal-cell cal-empty"></div>';
+  }
+
+  for (const day of calendar.days) {
+    let classes = `cal-cell cal-${day.state.toLowerCase()}`;
+    let icon = '';
+
+    if (day.isToday) {
+      classes += ' cal-today';
+    }
+
+    if (day.state === 'COMPLETED' || day.state === 'ACTIVE_TODAY') {
+      icon = '<span class="cal-icon">🔥</span>';
+    } else if (day.state === 'FROZEN') {
+      icon = '<span class="cal-icon">❄️</span>';
+    } else if (day.state === 'PAUSED') {
+      icon = '<span class="cal-icon">⏸️</span>';
+    } else if (day.state === 'EXEMPT') {
+      icon = '<span class="cal-icon cal-icon-dim">—</span>';
+    }
+
+    html += `
+      <div class="${classes}" title="${day.date}: ${day.state}">
+        <span class="cal-num">${day.day}</span>
+        ${icon}
+      </div>
+    `;
+  }
+  return html;
+}
+
+function renderEmbedHtml(
+  state: any,
+  ruleName: string,
+  ruleSlug: string,
+  externalUserId: string,
+  timezone: string,
+  calendar: MonthCalendarDTO,
+  customAnimationUrl?: string
+): string {
   const streak = state.currentStreak || 0;
   const highest = state.highestStreak || streak;
   const status = state.status || 'PENDING_TODAY';
-  const progress = state.todayProgress || { current: 0, target: 1, completed: false };
   const freezes = state.freezes || { available: 2, max: 2 };
   const history = state.historyLast14Days || [];
   const milestone = state.milestone;
 
-  let flameColor = '#94a3b8';
   let glow = 'none';
   let statusText = 'Pending';
   let statusBadgeBg = '#334155';
 
   if (status === 'ACTIVE_TODAY') {
-    flameColor = '#f59e0b';
     glow = '0 0 24px rgba(245, 158, 11, 0.7)';
     statusText = 'Active Today';
     statusBadgeBg = '#15803d';
   } else if (status === 'AT_RISK') {
-    flameColor = '#ef4444';
     glow = '0 0 20px rgba(239, 68, 68, 0.8)';
     statusText = 'At Risk!';
     statusBadgeBg = '#b91c1c';
   } else if (status === 'FROZEN') {
-    flameColor = '#38bdf8';
     glow = '0 0 20px rgba(56, 189, 248, 0.7)';
     statusText = 'Frozen';
     statusBadgeBg = '#0369a1';
   }
 
-  const historyHtml = history
+  const stripHtml = history
     .slice(-10)
     .map((item: any) => {
       const day = item.date.slice(8);
@@ -172,6 +388,9 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
       `;
     })
     .join('');
+
+  const calendarCellsHtml = renderCalendarCellsHtml(calendar);
+  const perfectWeeksCount = calendar.perfectWeeks.length;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -292,20 +511,173 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
     }
     .stat-val { font-size: 18px; font-weight: 700; }
     .stat-lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    /* Calendar and History Container */
     .history-card {
       background: #0f172a;
       border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 14px;
+      border-radius: 14px;
+      padding: 16px;
       margin-bottom: 20px;
     }
-    .history-header {
+    .view-tabs {
+      display: flex;
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+    .view-tab {
+      flex: 1;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
       color: #94a3b8;
-      margin-bottom: 12px;
-      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s;
     }
+    .view-tab.active {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    /* Month Calendar View Styles */
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .cal-month-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.3px;
+    }
+    .cal-nav-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .cal-nav-btn:hover { background: #334155; color: #ffffff; }
+
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .cal-weekday {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+    .cal-cell {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      position: relative;
+      transition: transform 0.1s;
+    }
+    .cal-empty { background: transparent; }
+    .cal-num { line-height: 1; }
+    .cal-icon { font-size: 9px; line-height: 1; margin-top: 1px; }
+    .cal-icon-dim { color: #64748b; }
+
+    /* Day states */
+    .cal-completed {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25));
+      border: 1px solid rgba(245, 158, 11, 0.6);
+      color: #fbbf24;
+    }
+    .cal-active_today {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border: 1px solid #f59e0b;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+    .cal-frozen {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.25));
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      color: #38bdf8;
+    }
+    .cal-paused {
+      background: rgba(129, 140, 248, 0.2);
+      border: 1px solid rgba(129, 140, 248, 0.4);
+      color: #a5b4fc;
+    }
+    .cal-exempt {
+      background: #1e293b;
+      color: #64748b;
+    }
+    .cal-missed {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      color: #475569;
+    }
+    .cal-pending_today {
+      border: 1.5px dashed #f59e0b;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .cal-at_risk {
+      border: 1.5px dashed #ef4444;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      animation: pulse-ring 1.5s infinite;
+    }
+    .cal-future {
+      background: transparent;
+      color: #334155;
+    }
+    .cal-today {
+      outline: 2px solid #f59e0b;
+      outline-offset: 1px;
+    }
+
+    .cal-perfect-banner {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #f59e0b;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .cal-stats-footer {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* 10-day Strip Styles */
     .history-strip {
       display: flex;
       justify-content: space-between;
@@ -329,6 +701,7 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
       font-size: 13px;
       font-weight: bold;
     }
+
     .milestone-banner {
       background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
       border: 1px solid rgba(245, 158, 11, 0.35);
@@ -362,6 +735,10 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
@@ -392,10 +769,53 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
       </div>
     </div>
 
+    <!-- Calendar & History Card with View Switcher -->
     <div class="history-card">
-      <div class="history-header">Last 10 Days Activity</div>
-      <div class="history-strip">
-        ${historyHtml}
+      <div class="view-tabs">
+        <button class="view-tab active" id="tabMonth">📅 Month Calendar</button>
+        <button class="view-tab" id="tabStrip">⚡ 10-Day Strip</button>
+      </div>
+
+      <!-- View 1: Duolingo-style Month Calendar View -->
+      <div id="monthCalendarView">
+        <div class="cal-header">
+          <button class="cal-nav-btn" id="calPrevBtn">‹</button>
+          <span class="cal-month-title" id="calMonthTitle">${calendar.monthName} ${calendar.year}</span>
+          <button class="cal-nav-btn" id="calNextBtn">›</button>
+        </div>
+
+        <div class="cal-weekdays">
+          <span class="cal-weekday">S</span>
+          <span class="cal-weekday">M</span>
+          <span class="cal-weekday">T</span>
+          <span class="cal-weekday">W</span>
+          <span class="cal-weekday">T</span>
+          <span class="cal-weekday">F</span>
+          <span class="cal-weekday">S</span>
+        </div>
+
+        <div class="cal-grid" id="calGrid">
+          ${calendarCellsHtml}
+        </div>
+
+        <div id="perfectBannerContainer">
+          ${
+            perfectWeeksCount > 0
+              ? `<div class="cal-perfect-banner">✨ ${perfectWeeksCount} Perfect Week${perfectWeeksCount > 1 ? 's' : ''}! (7/7 days active)</div>`
+              : ''
+          }
+        </div>
+
+        <div class="cal-stats-footer" id="calFooterStats">
+          🔥 ${calendar.activeDaysCount} Active Days · ❄️ ${calendar.frozenDaysCount} Frozen
+        </div>
+      </div>
+
+      <!-- View 2: Horizontal Activity Strip -->
+      <div id="stripView" style="display: none;">
+        <div class="history-strip">
+          ${stripHtml}
+        </div>
       </div>
     </div>
 
@@ -415,6 +835,96 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
   </div>
 
   <script>
+    // State for interactive month calendar
+    var curYear = ${calendar.year};
+    var curMonth = ${calendar.month};
+    var ruleSlug = "${ruleSlug}";
+    var externalUserId = "${externalUserId}";
+    var timezone = "${timezone}";
+
+    // View Switcher logic
+    var tabMonth = document.getElementById('tabMonth');
+    var tabStrip = document.getElementById('tabStrip');
+    var monthView = document.getElementById('monthCalendarView');
+    var stripView = document.getElementById('stripView');
+
+    tabMonth.addEventListener('click', function() {
+      tabMonth.classList.add('active');
+      tabStrip.classList.remove('active');
+      monthView.style.display = 'block';
+      stripView.style.display = 'none';
+    });
+
+    tabStrip.addEventListener('click', function() {
+      tabStrip.classList.add('active');
+      tabMonth.classList.remove('active');
+      monthView.style.display = 'none';
+      stripView.style.display = 'block';
+    });
+
+    // Month Navigation handler
+    function loadMonthCalendar(year, month) {
+      fetch('/v1/embed/' + encodeURIComponent(ruleSlug) + '/' + encodeURIComponent(externalUserId) + '/calendar?year=' + year + '&month=' + month + '&timezone=' + encodeURIComponent(timezone))
+        .then(function(r) { return r.json(); })
+        .then(function(cal) {
+          curYear = cal.year;
+          curMonth = cal.month;
+          document.getElementById('calMonthTitle').innerText = cal.monthName + ' ' + cal.year;
+
+          // Render cells
+          var html = '';
+          for (var i = 0; i < cal.firstDayOfWeek; i++) {
+            html += '<div class="cal-cell cal-empty"></div>';
+          }
+          for (var j = 0; j < cal.days.length; j++) {
+            var day = cal.days[j];
+            var classes = 'cal-cell cal-' + day.state.toLowerCase();
+            var icon = '';
+            if (day.isToday) classes += ' cal-today';
+            if (day.state === 'COMPLETED' || day.state === 'ACTIVE_TODAY') {
+              icon = '<span class="cal-icon">🔥</span>';
+            } else if (day.state === 'FROZEN') {
+              icon = '<span class="cal-icon">❄️</span>';
+            } else if (day.state === 'PAUSED') {
+              icon = '<span class="cal-icon">⏸️</span>';
+            } else if (day.state === 'EXEMPT') {
+              icon = '<span class="cal-icon cal-icon-dim">—</span>';
+            }
+            html += '<div class="' + classes + '" title="' + day.date + ': ' + day.state + '">' +
+              '<span class="cal-num">' + day.day + '</span>' + icon + '</div>';
+          }
+          document.getElementById('calGrid').innerHTML = html;
+
+          // Perfect week banner
+          var banner = document.getElementById('perfectBannerContainer');
+          if (cal.perfectWeeks && cal.perfectWeeks.length > 0) {
+            banner.innerHTML = '<div class="cal-perfect-banner">✨ ' + cal.perfectWeeks.length + ' Perfect Week' + (cal.perfectWeeks.length > 1 ? 's' : '') + '! (7/7 days active)</div>';
+          } else {
+            banner.innerHTML = '';
+          }
+
+          // Footer stats
+          document.getElementById('calFooterStats').innerText = '🔥 ' + cal.activeDaysCount + ' Active Days · ❄️ ' + cal.frozenDaysCount + ' Frozen';
+        })
+        .catch(function(e) {
+          console.error('Failed to load month calendar:', e);
+        });
+    }
+
+    document.getElementById('calPrevBtn').addEventListener('click', function() {
+      var m = curMonth - 1;
+      var y = curYear;
+      if (m < 1) { m = 12; y--; }
+      loadMonthCalendar(y, m);
+    });
+
+    document.getElementById('calNextBtn').addEventListener('click', function() {
+      var m = curMonth + 1;
+      var y = curYear;
+      if (m > 12) { m = 1; y++; }
+      loadMonthCalendar(y, m);
+    });
+
     // Lottie Animation Player with Graceful Fallback
     (function initLottie() {
       var container = document.getElementById('lottie-container');
@@ -446,24 +956,22 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
     })();
 
     // Native Bridge & Close Handler
-    document.getElementById('closeBtn').addEventListener('click', () => {
-      // 1. PostMessage for Web / iframe
+    document.getElementById('closeBtn').addEventListener('click', function() {
       window.parent.postMessage({ type: 'STREAKKIT_CLOSE' }, '*');
-      // 2. Android JavascriptInterface bridge if present
       if (window.StreakBridge && typeof window.StreakBridge.close === 'function') {
         window.StreakBridge.close();
       }
     });
 
     // Share Handler
-    document.getElementById('shareBtn').addEventListener('click', () => {
-      const text = "🔥 I'm on a ${streak}-day streak on ${ruleName}! Can you beat me?";
+    document.getElementById('shareBtn').addEventListener('click', function() {
+      var text = "🔥 I'm on a ${streak}-day streak on ${ruleName}! Can you beat me?";
       if (window.StreakBridge && typeof window.StreakBridge.share === 'function') {
         window.StreakBridge.share(text);
       } else if (navigator.share) {
-        navigator.share({ title: '${ruleName} Streak', text }).catch(() => {});
+        navigator.share({ title: '${ruleName} Streak', text: text }).catch(function() {});
       } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(() => {
+        navigator.clipboard.writeText(text).then(function() {
           alert('Milestone copied to clipboard!');
         });
       }
@@ -471,13 +979,13 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
 
     // Spark Particles for celebration
     if ('${status}' === 'ACTIVE_TODAY' || ${streak} > 0) {
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
+      var canvas = document.getElementById('canvas');
+      var ctx = canvas.getContext('2d');
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const particles = [];
-      for (let i = 0; i < 40; i++) {
+      var particles = [];
+      for (var i = 0; i < 40; i++) {
         particles.push({
           x: window.innerWidth / 2,
           y: 180,
@@ -492,8 +1000,9 @@ function renderEmbedHtml(state: any, ruleName: string, customAnimationUrl?: stri
 
       function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let active = false;
-        for (const p of particles) {
+        var active = false;
+        for (var j = 0; j < particles.length; j++) {
+          var p = particles[j];
           p.x += p.vx;
           p.y += p.vy;
           p.alpha -= p.decay;

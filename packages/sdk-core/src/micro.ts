@@ -176,6 +176,21 @@ export class StreakKitClient {
   }
 
   /**
+   * Fetches deterministic Duolingo-style monthly calendar data (days 1..31, completed, frozen, missed, active, perfect weeks)
+   */
+  async getCalendar(ruleSlug: string, year?: number, month?: number, timezone?: string) {
+    const tz = timezone || (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC');
+    let url = `${this.endpoint}/v1/streaks/${encodeURIComponent(ruleSlug)}/${encodeURIComponent(this.userId)}/calendar?timezone=${encodeURIComponent(tz)}`;
+    if (year) url += `&year=${year}`;
+    if (month) url += `&month=${month}`;
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${this.publicKey}` }
+    });
+    return res.json();
+  }
+
+  /**
    * Mounts the hardware-accelerated universal animated Lottie modal
    */
   showModal(ruleSlug: string, customAnimationUrl?: string) {

@@ -148,4 +148,21 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
     assert.equal(body.success, true);
     assert.equal(body.restoredStreakLength, 25);
   });
+
+  it('Step 6: Learner views Monthly Streak Calendar with active gold days and Sunday exemptions', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/streaks/${ruleSlug}/${gungbeLearnerId}/calendar?timezone=Africa/Lagos`,
+      headers: { authorization: `Bearer ${tenantKey}` }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const cal = JSON.parse(res.body);
+    assert.equal(cal.ruleSlug, 'gungbe_lesson');
+    assert.equal(cal.externalUserId, gungbeLearnerId);
+    assert.ok(cal.daysInMonth >= 28 && cal.daysInMonth <= 31);
+    assert.ok(Array.isArray(cal.days));
+    assert.ok(typeof cal.firstDayOfWeek === 'number');
+    assert.ok(typeof cal.activeDaysCount === 'number');
+  });
 });

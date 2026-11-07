@@ -216,7 +216,7 @@ describe('StreakKit E2E API Integration', () => {
     assert.equal(body.embedUrl, `/v1/embed/hujjify_playback/${testUser}`);
   });
 
-  it('GET /v1/embed/:ruleSlug/:userId serves the universal HTML dopamine UI', async () => {
+  it('GET /v1/embed/:ruleSlug/:userId serves the universal HTML dopamine UI with Duolingo-style Month Calendar', async () => {
     const res = await server.inject({
       method: 'GET',
       url: '/v1/embed/hujjify_playback/listener_guest'
@@ -227,6 +227,43 @@ describe('StreakKit E2E API Integration', () => {
     assert.ok(res.body.includes('Day Streak'));
     assert.ok(res.body.includes('Share Milestone'));
     assert.ok(res.body.includes('closeBtn'));
+    // Visual Monthly Calendar UI elements
+    assert.ok(res.body.includes('monthCalendarView'));
+    assert.ok(res.body.includes('calGrid'));
+    assert.ok(res.body.includes('calPrevBtn'));
+    assert.ok(res.body.includes('calNextBtn'));
+    assert.ok(res.body.includes('tabMonth'));
+  });
+
+  it('GET /v1/embed/:ruleSlug/:userId/calendar returns headless month calendar JSON for interactive view toggling', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/v1/embed/hujjify_playback/listener_guest/calendar?year=2026&month=11'
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.year, 2026);
+    assert.equal(body.month, 11);
+    assert.equal(body.daysInMonth, 30);
+    assert.equal(body.firstDayOfWeek, 0); // Sunday
+    assert.equal(body.days.length, 30);
+    assert.ok(Array.isArray(body.perfectWeeks));
+  });
+
+  it('GET /v1/streaks/:ruleSlug/:userId/calendar returns authenticated calendar JSON for custom client UIs', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/v1/streaks/hujjify_playback/listener_guest/calendar?year=2026&month=11',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.ruleSlug, 'hujjify_playback');
+    assert.equal(body.monthName, 'November');
+    assert.equal(body.days.length, 30);
+    assert.ok(typeof body.activeDaysCount === 'number');
   });
 
   it('Rule Management API: list, create, and update rules dynamically', async () => {
