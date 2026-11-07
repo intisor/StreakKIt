@@ -191,11 +191,26 @@ Base Headers: `Authorization: Bearer <PUBLIC_OR_SECRET_KEY>`, `Content-Type: app
 | **Vacation Pause**| `POST` | `/v1/streak/pause` | `{"ruleSlug": "...", "externalUserId": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD"}` |
 | **Friends Rank**  | `POST` | `/v1/streak/friends` | `{"ruleSlug": "...", "userIds": ["usr1", "usr2"]}` |
 | **Wrapped Stats** | `GET`  | `/v1/streak/wrapped?ruleSlug=...&externalUserId=...&year=2026` | *None* |
-| **Lottie Embed**  | `GET`  | `/v1/embed/:ruleSlug/:externalUserId` | *None (renders HTML)* |
+| **Month Calendar**| `GET`  | `/v1/streaks/:ruleSlug/:externalUserId/calendar?year=2026&month=11` | *None (returns MonthCalendarDTO)* |
+| **Lottie Embed**  | `GET`  | `/v1/embed/:ruleSlug/:externalUserId` | *None (renders HTML with interactive Month Calendar)* |
 
 ---
 
-## 5. Machine JSON Output Format (`POST /v1/ping`)
+## 5. Visual Calendar & Date UIs (Duolingo-Grade)
+
+Who fulfills calendar, date UIs? **StreakKit fulfills it out of the box.**
+
+1. **Drop-in UI (No code needed):**
+   - The Universal Embed (`/v1/embed/:ruleSlug/:externalUserId`) automatically includes a Duolingo-style interactive monthly calendar grid with month navigation (`‹ November 2026 ›`), gold flame badges for completed days (`🔥`), cyan ice crystal shields for frozen days (`❄️`), pause badges (`⏸️`), rest exemptions (`💤`), missed days, pulsing today ring, and **✨ Perfect Week** grouping banners.
+   - Users can toggle between `📅 Month Calendar` and `⚡ 10-Day Strip`.
+
+2. **Headless JSON Calendar API:**
+   - Call `GET /v1/streaks/:ruleSlug/:externalUserId/calendar?year=2026&month=11` (or via SDK: `client.getCalendar(ruleSlug, year, month)`).
+   - Returns deterministic grid data (`daysInMonth`, `firstDayOfWeek: 0`, array of `days` with status `COMPLETED | FROZEN | PAUSED | EXEMPT | MISSED | ACTIVE_TODAY | PENDING_TODAY | FUTURE`, and `perfectWeeks: [0, 1]`) ready for SwiftUI `LazyVGrid`, Jetpack Compose `LazyVerticalGrid`, or Flutter `GridView`.
+
+---
+
+## 6. Machine JSON Output Format (`POST /v1/ping`)
 ```json
 {
   "ruleSlug": "daily_task",
