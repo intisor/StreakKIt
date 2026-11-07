@@ -181,6 +181,10 @@ describe('Moat Routes E2E API Integration', () => {
       }
     });
 
+    if (claimRes.statusCode !== 200) {
+      console.log('CLAIM ERROR:', claimRes.body);
+    }
+
     assert.equal(claimRes.statusCode, 200);
     const claimBody = JSON.parse(claimRes.body);
     assert.equal(claimBody.success, true);

@@ -1029,6 +1029,17 @@ function renderEmbedHtml(
       var ctx = null;
       var isMuted = localStorage.getItem('streakkit_sound_enabled') === 'false';
 
+      // Notify host application if milestone was just achieved
+      var justReached = ${milestone?.justReached || 0};
+      if (justReached > 0) {
+        try {
+          if (window.StreakBridge && window.StreakBridge.onMilestone) {
+            window.StreakBridge.onMilestone('${ruleSlug}', justReached);
+          }
+          window.parent.postMessage({ type: 'streakkit:milestone', ruleSlug: '${ruleSlug}', milestone: justReached }, '*');
+        } catch (_) {}
+      }
+
       function getAudioContext() {
         if (!ctx) {
           var AudioCtx = window.AudioContext || window.webkitAudioContext;

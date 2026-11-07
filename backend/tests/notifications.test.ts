@@ -251,4 +251,27 @@ describe('Behavioral Contrast & Counter-Habit Nudges', () => {
     assert.equal(body.notification.title, '🎮 50m of gaming?');
     assert.equal(body.notification.body, 'But 0 logs today? Don’t let your streak slip!');
   });
+
+  it('POST /v1/users/push-token registers client FCM / push token idempotently', async () => {
+    const userId = 'push_user_' + Math.random().toString(16).slice(2, 10);
+    const token = 'fcm_tok_' + Math.random().toString(36).slice(2, 15);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/users/push-token',
+      headers: {
+        authorization: `Bearer ${testTenantKey}`
+      },
+      payload: {
+        externalUserId: userId,
+        pushToken: token,
+        platform: 'FCM'
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.success, true);
+    assert.equal(body.message, 'Push token registered');
+  });
 });

@@ -67,6 +67,14 @@ object StreakKit {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val listeners = mutableListOf<(JSONObject) -> Unit>()
+    private val milestoneListeners = mutableListOf<(ruleSlug: String, milestoneDay: Int) -> Unit>()
+
+    /**
+     * Register a listener for when a user unlocks a milestone day (e.g. 3, 7, 14, 30, 100 days).
+     */
+    fun onMilestoneReached(listener: (ruleSlug: String, milestoneDay: Int) -> Unit) {
+        milestoneListeners.add(listener)
+    }
 
     /**
      * Initialize SDK with API keys and declared developer rules (via list or JSON string).
@@ -186,8 +194,13 @@ object StreakKit {
                     val body = response.body?.string() ?: return
                     val json = try { JSONObject(body) } catch (_: Exception) { return }
                     saveState(context, json)
+                    val milestoneObj = json.optJSONObject("milestone")
+                    val justReached = milestoneObj?.optInt("justReached", -1) ?: -1
                     mainHandler.post {
                         listeners.forEach { it(json) }
+                        if (justReached > 0) {
+                            milestoneListeners.forEach { it(ruleSlug, justReached) }
+                        }
                         onSuccess?.invoke(json)
                     }
                     flushQueue(context)
@@ -305,6 +318,13 @@ object StreakKit {
                                 putExtra(Intent.EXTRA_TEXT, text)
                             }
                             activity.startActivity(Intent.createChooser(intent, "Share Streak Milestone"))
+                        }
+                    }
+
+                    @JavascriptInterface
+                    fun onMilestone(slug: String, day: Int) {
+                        activity.runOnUiThread {
+                            milestoneListeners.forEach { it(slug, day) }
                         }
                     }
                 }, "StreakBridge")
@@ -682,6 +702,39 @@ object StreakKit {
                 val success = json.optBoolean("success", false)
                 val resurrected = json.optInt("resurrectedStreak", 0)
                 mainHandler.post { onComplete(success, resurrected) }
+            }
+        })
+    }
+
+    /**
+     * Registers a Firebase Cloud Messaging (FCM) or push token with StreakKit.
+     */
+    fun registerPushToken(
+        userId: String = "user_default",
+        pushToken: String,
+        platform: String = "FCM",
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("externalUserId", userId)
+            put("pushToken", pushToken)
+            put("platform", platform)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/users/push-token")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete?.invoke(false) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { onComplete?.invoke(response.isSuccessful) }
             }
         })
     }

@@ -201,6 +201,17 @@ class SqliteAdapter implements DbAdapter {
 
       CREATE INDEX IF NOT EXISTS idx_webhook_outbox_pending 
       ON webhook_outbox (next_attempt_at);
+
+      CREATE TABLE IF NOT EXISTS user_push_tokens (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        push_token TEXT NOT NULL,
+        platform TEXT NOT NULL DEFAULT 'FCM',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(tenant_id, external_user_id, push_token)
+      );
     `);
 
     // Safely apply alterations for existing database instances

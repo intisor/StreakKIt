@@ -457,7 +457,7 @@ export class MoatService {
       `UPDATE user_streaks
        SET current_streak = $1,
            last_completed_logical_date = $2,
-           last_broken_streak_length = NULL,
+           last_broken_streak_length = 0,
            last_broken_date = NULL,
            updated_at = datetime('now')
        WHERE tenant_id = $3 AND rule_id = $4 AND external_user_id = $5`,

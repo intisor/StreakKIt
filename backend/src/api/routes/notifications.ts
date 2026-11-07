@@ -1,4 +1,5 @@
 // api/routes/notifications.ts: Behavioral Contrast & Escalating Notification API
+import crypto from 'node:crypto';
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { AuthenticatedRequest, authenticateApiKey } from '../middleware/auth.js';
 import { getDb } from '../../config/db.js';
@@ -226,6 +227,44 @@ export async function registerNotificationRoutes(fastify: FastifyInstance) {
         notification,
         state: stateDTO
       });
+    }
+  );
+
+  /**
+   * POST /v1/users/push-token
+   * Registers a client device push token (FCM, OneSignal, APNs)
+   */
+  fastify.post(
+    '/v1/users/push-token',
+    { preHandler: authenticateApiKey },
+    async (request: AuthenticatedRequest, reply: FastifyReply) => {
+      const tenant = request.tenant!;
+      const body = request.body as {
+        externalUserId: string;
+        pushToken: string;
+        platform?: 'FCM' | 'ONESIGNAL' | 'APNS';
+      };
+
+      if (!body?.externalUserId || !body?.pushToken) {
+        return reply.status(400).send({
+          error: 'Missing required parameters: externalUserId and pushToken'
+        });
+      }
+
+      const db = getDb();
+      const platform = body.platform || 'FCM';
+      const id = crypto.randomUUID();
+
+      await db.execute(
+        `INSERT INTO user_push_tokens (id, tenant_id, external_user_id, push_token, platform)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, external_user_id, push_token) DO UPDATE SET
+           platform = excluded.platform,
+           updated_at = datetime('now')`,
+        [id, tenant.id, body.externalUserId, body.pushToken, platform]
+      );
+
+      return reply.status(200).send({ success: true, message: 'Push token registered' });
     }
   );
 }
