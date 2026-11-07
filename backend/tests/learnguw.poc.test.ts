@@ -165,4 +165,36 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
     assert.ok(typeof cal.firstDayOfWeek === 'number');
     assert.ok(typeof cal.activeDaysCount === 'number');
   });
+
+  it('Step 7: Learner purchases Streak Rescue with Google Play in Learn Gungbe -> Restored & Audited', async () => {
+    // Break streak of 30 days
+    await db.execute(
+      `UPDATE user_streaks 
+       SET current_streak = 0, last_broken_streak_length = 30, last_broken_date = '2026-11-03'
+       WHERE external_user_id = $1`,
+      [gungbeLearnerId]
+    );
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/streak/repair-verify',
+      headers: { authorization: `Bearer ${tenantKey}` },
+      payload: {
+        ruleSlug,
+        externalUserId: gungbeLearnerId,
+        timezone: 'Africa/Lagos',
+        paymentProof: {
+          provider: 'google_play',
+          transactionId: 'GPA.8821-3910-4491-00291',
+          productId: 'gungbe_streak_rescue_tier1'
+        }
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.success, true);
+    assert.equal(body.restoredStreakLength, 30);
+    assert.equal(body.transactionId, 'GPA.8821-3910-4491-00291');
+  });
 });

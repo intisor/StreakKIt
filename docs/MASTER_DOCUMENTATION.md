@@ -258,18 +258,67 @@ const cal = await streakkit.getCalendar('daily_workout', 2026, 11);
 
 ---
 
-## 7. HTTP REST API Quick Reference
+## 7. Procedural Web Audio Synthesizer & Monetization Paywalls
+
+### 7.1 Zero-Byte Web Audio Synthesizer
+StreakKit features an embedded real-time procedural sound engine built on `window.AudioContext`. It synthesizes clean harmonic feedback with **zero external asset downloads**:
+- **`streak_extend`:** Rising major triad chord (`C5` → `E5` → `G5` → `C6`) with exponential gain decay.
+- **`streak_freeze`:** Crystalline glass harmonic (`B5` 987 Hz) + bandpass-filtered frost sizzle.
+- **`streak_at_risk`:** Dual low-frequency cautionary warning pulse (`A2` → `F#2`).
+- **`milestone_unlocked`:** Victory fanfare arpeggio with shimmer harmonics.
+- **Mute / Unmute Control:** Interactive volume toggle button in the embed header with `localStorage` persistence.
+- **Native Haptics Forwarding:** Dispatches `StreakBridge.onSoundEffect(type)` to trigger Android/iOS device haptics.
+
+### 7.2 In-App Purchase (IAP) & Streak Rescue Paywall
+When a user misses a day without freezes (`status === 'BROKEN'`), StreakKit replaces the empty card with a high-converting **Streak Rescue Paywall**:
+- **Hard Currency:** `💎 Restore Streak · $2.99` triggers `StreakBridge.onPurchaseRequest(json)` for Google Play Billing and Apple StoreKit.
+- **Soft Currency:** `🪙 Use 50 Gems / Coins` triggers `StreakBridge.onCoinSpend(json)`.
+- **Backend Verification:** Host applications verify the transaction proof via `POST /v1/streak/repair-verify`, which atomically resurrects the user's streak and writes an audit row to `streak_history`.
+
+---
+
+## 8. Airplane-Mode CRDT Offline Sync & Transatlantic Protection
+
+### 8.1 The Transatlantic Midnight Problem
+When a user completes a lesson at 11:45 PM on an airplane leaving London and lands in New York 6 hours later, naive servers evaluate the upload time post-midnight in London and break the streak.
+
+### 8.2 The Solution
+StreakKit checks `event.metadata.timezone` (creation timezone) alongside cryptographic monotonic hardware timers (`monotonicMs`). If the event was completed prior to midnight in the timezone where the user was physically located when completing the action, the evaluator retroactively attributes the completion to that logical date and preserves the streak unbroken.
+
+---
+
+## 9. iOS ActivityKit / Dynamic Island & Android Ongoing Sync
+
+### 9.1 ActivityKit Swift Specification
+```swift
+import ActivityKit
+import WidgetKit
+
+public struct StreakActivityAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        public var currentStreak: Int
+        public var secondsRemaining: Int
+        public var status: String // "ACTIVE_TODAY" | "AT_RISK" | "FROZEN"
+    }
+    public var ruleName: String
+}
+```
+
+---
+
+## 10. HTTP REST API Quick Reference
 
 | Method | Route | Description |
 | :--- | :--- | :--- |
 | `POST` | `/v1/ping` | Ingests action, auto-provisions rule, and returns state |
 | `POST` | `/v1/streak/restore` | Resurrects broken streaks within the 90-day restore window |
+| `POST` | `/v1/streak/repair-verify` | Verifies in-app purchase proof (Google Play/Apple StoreKit/Stripe) and restores streak |
 | `POST` | `/v1/streak/pause` | Schedules a date-range vacation pause |
 | `DELETE`| `/v1/streak/pause/:id` | Cancels an active vacation pause |
 | `POST` | `/v1/streak/friends` | Batch query ranking streaks across user IDs |
 | `GET` | `/v1/streak/wrapped` | Generates annual Wrapped engagement analytics |
 | `POST` | `/v1/streak/preferences` | Sets custom daily target and rest-day overrides |
 | `GET` | `/v1/streaks/:ruleSlug/:userId/calendar` | Headless JSON monthly calendar (days 1..31, states, perfect weeks) |
-| `GET` | `/v1/embed/:ruleSlug/:userId` | Serves universal animated HTML UI with interactive Month Calendar |
+| `GET` | `/v1/embed/:ruleSlug/:userId` | Serves universal animated HTML UI with interactive Month Calendar & Web Audio |
 | `GET` | `/v1/embed/:ruleSlug/:userId/calendar` | Headless embed calendar data for dynamic month navigation |
 | `POST` | `/v1/rules/sync` | Batch registers/syncs developer rules |

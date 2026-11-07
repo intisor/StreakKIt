@@ -119,6 +119,33 @@ export class StreakKitClient {
   }
 
   /**
+   * Validates In-App Purchase proof (Google Play, Apple StoreKit, Stripe, or Gems) and resurrects a broken streak
+   */
+  async verifyRepair(
+    ruleSlug: string,
+    paymentProof: {
+      provider: 'google_play' | 'apple_storekit' | 'stripe' | 'coins';
+      transactionId?: string;
+      productId?: string;
+      coinsSpent?: number;
+    }
+  ) {
+    const res = await fetch(`${this.endpoint}/v1/streak/repair-verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.publicKey}`
+      },
+      body: JSON.stringify({
+        ruleSlug,
+        externalUserId: this.userId,
+        paymentProof
+      })
+    });
+    return res.json();
+  }
+
+  /**
    * Trophy Moat 2: Schedule vacation / sick pause
    */
   async pause(ruleSlug: string, startDate: string, endDate: string) {

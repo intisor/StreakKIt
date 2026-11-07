@@ -294,6 +294,149 @@ describe('StreakKit E2E API Integration', () => {
     assert.ok(res.body.includes('#34d399'));
   });
 
+  it('GET /v1/embed/:ruleSlug/:userId embeds procedural Web Audio dopamine synthesizer & sound toggle', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/v1/embed/hujjify_playback/listener_guest'
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.body.includes('AudioEngine'));
+    assert.ok(res.body.includes('soundToggleBtn'));
+    assert.ok(res.body.includes('streakkit_sound_enabled'));
+    assert.ok(res.body.includes('streak_extend'));
+    assert.ok(res.body.includes('streak_freeze'));
+    assert.ok(res.body.includes('milestone_unlocked'));
+  });
+
+  it('renders high-converting Streak Repair Paywall Card when streak is broken', async () => {
+    const brokenUser = `paywall_user_${crypto.randomUUID().slice(0, 8)}`;
+    // Ping to create user streak
+    await server.inject({
+      method: 'POST',
+      url: '/v1/ping',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: { ruleSlug: 'hujjify_playback', externalUserId: brokenUser, value: 1 }
+    });
+
+    // Simulate streak break: currentStreak = 0, last_broken_streak_length = 42
+    await db.execute(
+      `UPDATE user_streaks
+       SET current_streak = 0, last_broken_streak_length = 42, last_broken_date = '2026-11-01'
+       WHERE external_user_id = $1`,
+      [brokenUser]
+    );
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/embed/hujjify_playback/${brokenUser}`
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.body.includes('paywallCard'));
+    assert.ok(res.body.includes('Restore your 42-Day Streak!'));
+    assert.ok(res.body.includes('btnPaywallIap'));
+    assert.ok(res.body.includes('btnPaywallCoins'));
+    assert.ok(res.body.includes('STREAKKIT_PURCHASE_INTENT'));
+  });
+
+  it('POST /v1/streak/repair-verify verifies in-app purchase proof and restores streak atomically', async () => {
+    const repairUser = `repair_iap_${crypto.randomUUID().slice(0, 8)}`;
+    // Ping to initialize
+    await server.inject({
+      method: 'POST',
+      url: '/v1/ping',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: { ruleSlug: 'hujjify_playback', externalUserId: repairUser, value: 1 }
+    });
+
+    // Simulate streak break of 55 days
+    await db.execute(
+      `UPDATE user_streaks
+       SET current_streak = 0, last_broken_streak_length = 55, last_broken_date = '2026-11-02'
+       WHERE external_user_id = $1`,
+      [repairUser]
+    );
+
+    // Call /v1/streak/repair-verify with Google Play receipt proof
+    const verifyRes = await server.inject({
+      method: 'POST',
+      url: '/v1/streak/repair-verify',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        ruleSlug: 'hujjify_playback',
+        externalUserId: repairUser,
+        paymentProof: {
+          provider: 'google_play',
+          transactionId: 'GPA.3391-4492-1102-44102',
+          productId: 'streak_repair_tier1'
+        }
+      }
+    });
+
+    assert.equal(verifyRes.statusCode, 200);
+    const body = JSON.parse(verifyRes.body);
+    assert.equal(body.success, true);
+    assert.equal(body.restoredStreakLength, 55);
+    assert.equal(body.transactionId, 'GPA.3391-4492-1102-44102');
+
+    // Verify DB state was updated atomically
+    const row = await db.get(
+      'SELECT current_streak, last_broken_streak_length FROM user_streaks WHERE external_user_id = $1',
+      [repairUser]
+    );
+    assert.equal(row.current_streak, 55);
+    assert.equal(row.last_broken_streak_length, 0);
+
+    // Verify streak_history audit row exists
+    const historyRow = await db.get(
+      'SELECT status, streak_length FROM streak_history WHERE external_user_id = $1 AND status = $2',
+      [repairUser, 'REPAIRED']
+    );
+    assert.ok(historyRow);
+    assert.equal(historyRow.streak_length, 55);
+  });
+
+  it('Airplane-Mode Transatlantic Ingestion: respects creation timezone to prevent midnight drift', async () => {
+    const flightUser = `flight_traveler_${crypto.randomUUID().slice(0, 8)}`;
+    const eventId = crypto.randomUUID();
+
+    // Event occurred in London at 23:45 PM before midnight
+    const occurredInLondonUtc = '2026-11-06T23:45:00.000Z';
+
+    const res = await server.inject({
+      method: 'POST',
+      url: '/v1/events/batch',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        externalUserId: flightUser,
+        timezone: 'America/New_York', // Device is now in NY after landing
+        events: [
+          {
+            eventId,
+            ruleSlug: 'hujjify_playback',
+            value: 1,
+            occurredAtUtc: occurredInLondonUtc,
+            monotonicMs: 120594,
+            metadata: {
+              timezone: 'Europe/London' // Timezone where flight activity took place
+            }
+          }
+        ]
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.processedCount, 1);
+    const state = body.states.hujjify_playback;
+    assert.ok(state);
+    assert.equal(state.currentStreak, 1);
+    // Verified 2026-11-06 is marked completed in rolling history
+    const completedDay = state.historyLast14Days.find((h: any) => h.date === '2026-11-06');
+    assert.equal(completedDay?.state, 'COMPLETED');
+  });
+
   it('Rule Management API: list, create, and update rules dynamically', async () => {
     // 1. List rules
     const listRes = await server.inject({

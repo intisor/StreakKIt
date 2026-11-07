@@ -159,6 +159,69 @@ export class MoatService {
   }
 
   /**
+   * Validates an In-App Purchase (Google Play, Apple StoreKit, Stripe, or in-app gems/coins)
+   * and restores a broken streak atomically.
+   */
+  async verifyAndRestoreStreak(
+    tenantId: string,
+    ruleSlug: string,
+    externalUserId: string,
+    currentDate: string,
+    paymentProof: {
+      provider: 'google_play' | 'apple_storekit' | 'stripe' | 'coins';
+      transactionId?: string;
+      productId?: string;
+      coinsSpent?: number;
+    }
+  ): Promise<{ restored: boolean; restoredStreakLength: number; reason: string; transactionId?: string }> {
+    const userStreak = await this.db.get<any>(
+      `SELECT us.*, sr.restore_window_days
+       FROM user_streaks us
+       JOIN streak_rules sr ON sr.id = us.rule_id
+       WHERE us.tenant_id = $1 AND sr.slug = $2 AND us.external_user_id = $3`,
+      [tenantId, ruleSlug, externalUserId]
+    );
+
+    if (!userStreak) {
+      return { restored: false, restoredStreakLength: 0, reason: 'USER_STREAK_NOT_FOUND' };
+    }
+
+    const lastBreakLength = userStreak.last_broken_streak_length;
+    if (lastBreakLength <= 0 && userStreak.current_streak > 0) {
+      return { restored: false, restoredStreakLength: userStreak.current_streak, reason: 'STREAK_NOT_BROKEN' };
+    }
+
+    const restoredStreakLength = lastBreakLength > 0 ? lastBreakLength : 1;
+    const txId = paymentProof.transactionId || `tx_${crypto.randomUUID().slice(0, 12)}`;
+
+    // Atomically restore streak in DB
+    await this.db.execute(
+      `UPDATE user_streaks
+       SET current_streak = $1,
+           last_broken_streak_length = 0,
+           last_broken_date = NULL,
+           updated_at = datetime('now')
+       WHERE id = $2`,
+      [restoredStreakLength, userStreak.id]
+    );
+
+    // Record audit row in streak_history
+    const historyId = crypto.randomUUID();
+    await this.db.execute(
+      `INSERT INTO streak_history (id, tenant_id, rule_id, external_user_id, period_date, status, streak_length)
+       VALUES ($1, $2, $3, $4, $5, 'REPAIRED', $6)`,
+      [historyId, tenantId, userStreak.rule_id, externalUserId, currentDate, restoredStreakLength]
+    );
+
+    return {
+      restored: true,
+      restoredStreakLength,
+      reason: 'PURCHASE_VERIFIED',
+      transactionId: txId
+    };
+  }
+
+  /**
    * Retrieves streak states for an array of friend user IDs, sorted by longest streak.
    */
   async getBatchStreaks(

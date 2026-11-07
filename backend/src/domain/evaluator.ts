@@ -99,9 +99,10 @@ export function evaluateEvent(
   event: VerifiedEvent,
   nowUtc: Date = new Date()
 ): EvaluationResult {
+  const eventTimezone = (event.metadata?.timezone as string) || userStreak.timezone;
   const L_event = computeLogicalDate(
     event.occurredAtUtc,
-    userStreak.timezone,
+    eventTimezone,
     rule.gracePeriodMinutes
   );
   const L_last = userStreak.lastCompletedLogicalDate;

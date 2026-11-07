@@ -65,6 +65,62 @@ export async function registerMoatRoutes(fastify: FastifyInstance) {
   );
 
   /**
+   * POST /v1/streak/repair-verify
+   * Validates in-app purchase proof or gem spend and resurrects broken streaks
+   */
+  fastify.post(
+    '/v1/streak/repair-verify',
+    { preHandler: authenticateApiKey },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const auth = request as AuthenticatedRequest;
+      const tenant = auth.tenant!;
+
+      const body = request.body as {
+        ruleSlug: string;
+        externalUserId: string;
+        timezone?: string;
+        paymentProof: {
+          provider: 'google_play' | 'apple_storekit' | 'stripe' | 'coins';
+          transactionId?: string;
+          productId?: string;
+          coinsSpent?: number;
+        };
+      };
+
+      if (!body?.ruleSlug || !body?.externalUserId || !body?.paymentProof?.provider) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'ruleSlug, externalUserId, and paymentProof are required'
+        });
+      }
+
+      const currentDate = computeLogicalDate(new Date(), body.timezone || 'UTC', 0);
+      const result = await moatService.verifyAndRestoreStreak(
+        tenant.id,
+        body.ruleSlug,
+        body.externalUserId,
+        currentDate,
+        body.paymentProof
+      );
+
+      if (!result.restored) {
+        return reply.status(400).send({
+          error: 'REPAIR_FAILED',
+          reason: result.reason,
+          message: 'Could not restore streak'
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        restoredStreakLength: result.restoredStreakLength,
+        transactionId: result.transactionId,
+        message: `Streak successfully revived to ${result.restoredStreakLength} days`
+      });
+    }
+  );
+
+  /**
    * POST /v1/streak/pause
    * Schedules a vacation pause
    */

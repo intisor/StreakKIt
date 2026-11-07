@@ -7,7 +7,6 @@ import { computeLogicalDate } from '../../domain/time-window.js';
 import {
   generateMonthCalendar,
   MonthCalendarDTO,
-  CalendarDayDTO,
   StreakHistoryEntry,
   StreakPauseEntry
 } from '../../domain/calendar.js';
@@ -199,6 +198,8 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         userDaysOff
       );
 
+      const brokenStreakLength = userStreakRow?.last_broken_streak_length || 0;
+
       const html = renderEmbedHtml(
         state,
         rule.name,
@@ -206,7 +207,8 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         externalUserId,
         userTimezone,
         initialCalendar,
-        animConfig
+        animConfig,
+        brokenStreakLength
       );
       return reply.type('text/html').send(html);
     }
@@ -385,7 +387,8 @@ function renderEmbedHtml(
   externalUserId: string,
   timezone: string,
   calendar: MonthCalendarDTO,
-  animConfig?: StreakAnimationConfig
+  animConfig?: StreakAnimationConfig,
+  brokenStreakLength: number = 0
 ): string {
   const streak = state.currentStreak || 0;
   const highest = state.highestStreak || streak;
@@ -415,6 +418,11 @@ function renderEmbedHtml(
     defaultGlow = '0 0 20px rgba(56, 189, 248, 0.7)';
     statusText = 'Frozen';
     statusBadgeBg = '#0369a1';
+  } else if (status === 'BROKEN') {
+    defaultThemeColor = '#ef4444';
+    defaultGlow = '0 0 20px rgba(239, 68, 68, 0.6)';
+    statusText = 'Broken';
+    statusBadgeBg = '#7f1d1d';
   }
 
   // Developer code-customized animation options
@@ -458,6 +466,7 @@ function renderEmbedHtml(
 
   const calendarCellsHtml = renderCalendarCellsHtml(calendar);
   const perfectWeeksCount = calendar.perfectWeeks.length;
+  const showPaywall = brokenStreakLength > 0 && streak === 0;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -493,6 +502,11 @@ function renderEmbedHtml(
       align-items: center;
       margin-bottom: 20px;
     }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
     .rule-title {
       font-size: 14px;
       font-weight: 600;
@@ -500,20 +514,21 @@ function renderEmbedHtml(
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .close-btn {
+    .sound-btn, .close-btn {
       background: #1e293b;
       border: 1px solid #334155;
       color: #94a3b8;
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: all 0.2s;
     }
-    .close-btn:hover { background: #334155; color: #ffffff; }
+    .sound-btn:hover, .close-btn:hover { background: #334155; color: #ffffff; }
     .card {
       width: 100%;
       max-width: 440px;
@@ -775,6 +790,78 @@ function renderEmbedHtml(
       font-weight: bold;
     }
 
+    /* Paywall Monetization Banner */
+    .paywall-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(245, 158, 11, 0.18));
+      border: 1.5px solid rgba(245, 158, 11, 0.6);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: pulse-ring 2.2s infinite;
+    }
+    .paywall-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: #f59e0b;
+      color: #0f172a;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .paywall-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+    .paywall-desc {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+    .paywall-btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .paywall-btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0f172a;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+      transition: transform 0.1s, filter 0.1s;
+    }
+    .paywall-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .paywall-btn-secondary {
+      width: 100%;
+      padding: 10px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .paywall-btn-secondary:hover { background: #334155; }
+    .paywall-urgency {
+      font-size: 11px;
+      color: #ef4444;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
     .milestone-banner {
       background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
       border: 1px solid rgba(245, 158, 11, 0.35);
@@ -814,206 +901,15 @@ function renderEmbedHtml(
     }
   </style>
 </head>
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .cal-month-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #f8fafc;
-      letter-spacing: 0.3px;
-    }
-    .cal-nav-btn {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      font-size: 15px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
-    }
-    .cal-nav-btn:hover { background: #334155; color: #ffffff; }
-
-    .cal-weekdays {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-      margin-bottom: 8px;
-      text-align: center;
-    }
-    .cal-weekday {
-      font-size: 11px;
-      font-weight: 700;
-      color: #64748b;
-    }
-
-    .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-    }
-    .cal-cell {
-      aspect-ratio: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      position: relative;
-      transition: transform 0.1s;
-    }
-    .cal-empty { background: transparent; }
-    .cal-num { line-height: 1; }
-    .cal-icon { font-size: 9px; line-height: 1; margin-top: 1px; }
-    .cal-icon-dim { color: #64748b; }
-
-    /* Day states */
-    .cal-completed {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25));
-      border: 1px solid rgba(245, 158, 11, 0.6);
-      color: #fbbf24;
-    }
-    .cal-active_today {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      border: 1px solid #f59e0b;
-      color: #ffffff;
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
-    }
-    .cal-frozen {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.25));
-      border: 1px solid rgba(56, 189, 248, 0.6);
-      color: #38bdf8;
-    }
-    .cal-paused {
-      background: rgba(129, 140, 248, 0.2);
-      border: 1px solid rgba(129, 140, 248, 0.4);
-      color: #a5b4fc;
-    }
-    .cal-exempt {
-      background: #1e293b;
-      color: #64748b;
-    }
-    .cal-missed {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid #334155;
-      color: #475569;
-    }
-    .cal-pending_today {
-      border: 1.5px dashed #f59e0b;
-      color: #f59e0b;
-      background: rgba(245, 158, 11, 0.08);
-    }
-    .cal-at_risk {
-      border: 1.5px dashed #ef4444;
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.12);
-      animation: pulse-ring 1.5s infinite;
-    }
-    .cal-future {
-      background: transparent;
-      color: #334155;
-    }
-    .cal-today {
-      outline: 2px solid #f59e0b;
-      outline-offset: 1px;
-    }
-
-    .cal-perfect-banner {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #f59e0b;
-      margin-top: 10px;
-      text-align: center;
-    }
-    .cal-stats-footer {
-      font-size: 11px;
-      color: #94a3b8;
-      margin-top: 8px;
-      text-align: center;
-    }
-
-    /* 10-day Strip Styles */
-    .history-strip {
-      display: flex;
-      justify-content: space-between;
-      gap: 4px;
-    }
-    .day-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    .day-label { font-size: 11px; color: #64748b; }
-    .day-icon {
-      width: 26px;
-      height: 26px;
-      background: #1e293b;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: bold;
-    }
-
-    .milestone-banner {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      border-radius: 12px;
-      padding: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #f59e0b;
-      margin-bottom: 20px;
-    }
-    .share-btn {
-      width: 100%;
-      padding: 14px;
-      background: #f59e0b;
-      color: #0f172a;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .share-btn:hover { background: #d97706; }
-    canvas {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 99;
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-    @keyframes pulse-ring {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-  </style>
-</head>
 <body>
   <canvas id="canvas"></canvas>
 
   <div class="header-bar">
     <span class="rule-title">${ruleName}</span>
-    <button class="close-btn" id="closeBtn">✕</button>
+    <div class="header-actions">
+      <button class="sound-btn" id="soundToggleBtn" title="Toggle Sound">🔊</button>
+      <button class="close-btn" id="closeBtn">✕</button>
+    </div>
   </div>
 
   <div class="card">
@@ -1035,6 +931,28 @@ function renderEmbedHtml(
         <div class="stat-lbl">Freezes Left</div>
       </div>
     </div>
+
+    ${
+      showPaywall
+        ? `
+      <!-- High-Converting Streak Repair Paywall Card -->
+      <div class="paywall-card" id="paywallCard">
+        <div class="paywall-badge">⚡ STREAK RESCUE AVAILABLE</div>
+        <div class="paywall-title">Restore your ${brokenStreakLength}-Day Streak!</div>
+        <p class="paywall-desc">Don't lose weeks of daily dedication. Reclaim your streak now before the grace window closes:</p>
+        <div class="paywall-btn-row">
+          <button class="paywall-btn-primary" id="btnPaywallIap">
+            💎 Restore Streak · $2.99
+          </button>
+          <button class="paywall-btn-secondary" id="btnPaywallCoins">
+            🪙 Use 50 Gems / Coins
+          </button>
+        </div>
+        <div class="paywall-urgency">⌛ Grace window expires soon</div>
+      </div>
+    `
+        : ''
+    }
 
     <!-- Calendar & History Card with View Switcher -->
     <div class="history-card">
@@ -1102,6 +1020,180 @@ function renderEmbedHtml(
   </div>
 
   <script>
+    // Procedural Web Audio Dopamine Synthesizer (Zero external downloads, 100% synthesized)
+    var AudioEngine = (function() {
+      var ctx = null;
+      var isMuted = localStorage.getItem('streakkit_sound_enabled') === 'false';
+
+      function getAudioContext() {
+        if (!ctx) {
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) ctx = new AudioCtx();
+        }
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(function() {});
+        }
+        return ctx;
+      }
+
+      function playTone(freq, start, duration, type, startGain, endGain) {
+        var ac = getAudioContext();
+        if (!ac || isMuted) return;
+
+        var osc = ac.createOscillator();
+        var gain = ac.createGain();
+
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, ac.currentTime + start);
+
+        gain.gain.setValueAtTime(startGain || 0.15, ac.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(endGain || 0.0001, ac.currentTime + start + duration);
+
+        osc.connect(gain);
+        gain.connect(ac.destination);
+
+        osc.start(ac.currentTime + start);
+        osc.stop(ac.currentTime + start + duration);
+      }
+
+      function playNoise(start, duration, filterFreq) {
+        var ac = getAudioContext();
+        if (!ac || isMuted) return;
+
+        var bufferSize = Math.floor(ac.sampleRate * duration);
+        var buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+        var data = buffer.getChannelData(0);
+        for (var i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        var noise = ac.createBufferSource();
+        noise.buffer = buffer;
+
+        var filter = ac.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(filterFreq || 2400, ac.currentTime + start);
+
+        var gain = ac.createGain();
+        gain.gain.setValueAtTime(0.08, ac.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + start + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ac.destination);
+
+        noise.start(ac.currentTime + start);
+        noise.stop(ac.currentTime + start + duration);
+      }
+
+      return {
+        isMuted: function() { return isMuted; },
+        toggleMute: function() {
+          isMuted = !isMuted;
+          localStorage.setItem('streakkit_sound_enabled', isMuted ? 'false' : 'true');
+          return !isMuted;
+        },
+        play: function(soundType) {
+          if (isMuted) return;
+          getAudioContext();
+
+          // Dispatch to native bridge if running inside Android / iOS app
+          if (window.StreakBridge && typeof window.StreakBridge.onSoundEffect === 'function') {
+            window.StreakBridge.onSoundEffect(soundType);
+          }
+
+          if (soundType === 'streak_extend') {
+            // Ascending major chord (C5 -> E5 -> G5 -> C6)
+            playTone(523.25, 0.00, 0.30, 'sine', 0.16);
+            playTone(659.25, 0.08, 0.32, 'sine', 0.18);
+            playTone(783.99, 0.16, 0.35, 'sine', 0.20);
+            playTone(1046.50, 0.24, 0.55, 'triangle', 0.24);
+          } else if (soundType === 'streak_freeze') {
+            // High crystal glass harmonic + crisp ice noise
+            playTone(987.77, 0.00, 0.45, 'triangle', 0.18);
+            playTone(1975.53, 0.05, 0.35, 'sine', 0.12);
+            playNoise(0.02, 0.30, 2600);
+          } else if (soundType === 'streak_at_risk') {
+            // Low cautionary dual pulse (A2 -> F#2)
+            playTone(110.00, 0.00, 0.22, 'sawtooth', 0.14);
+            playTone(92.50, 0.24, 0.30, 'sawtooth', 0.14);
+          } else if (soundType === 'milestone_unlocked') {
+            // Victory fanfare arpeggio
+            var notes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+            for (var i = 0; i < notes.length; i++) {
+              playTone(notes[i], i * 0.07, 0.40, 'triangle', 0.20);
+            }
+          }
+        }
+      };
+    })();
+
+    // Wire Sound Toggle Button
+    var soundBtn = document.getElementById('soundToggleBtn');
+    if (AudioEngine.isMuted()) {
+      soundBtn.innerText = '🔇';
+    }
+    soundBtn.addEventListener('click', function() {
+      var unmuted = AudioEngine.toggleMute();
+      soundBtn.innerText = unmuted ? '🔊' : '🔇';
+      if (unmuted) {
+        AudioEngine.play('streak_extend');
+      }
+    });
+
+    // Play initial sound on gesture or view
+    window.addEventListener('click', function onFirstClick() {
+      if ('${status}' === 'ACTIVE_TODAY' || ${streak} > 0) {
+        AudioEngine.play('streak_extend');
+      } else if ('${status}' === 'FROZEN') {
+        AudioEngine.play('streak_freeze');
+      } else if ('${status}' === 'AT_RISK') {
+        AudioEngine.play('streak_at_risk');
+      }
+      window.removeEventListener('click', onFirstClick);
+    }, { once: true });
+
+    // Wire Monetization Paywall Buttons
+    var btnPaywallIap = document.getElementById('btnPaywallIap');
+    if (btnPaywallIap) {
+      btnPaywallIap.addEventListener('click', function() {
+        var payload = {
+          action: 'STREAK_REPAIR',
+          brokenStreakLength: ${brokenStreakLength},
+          ruleSlug: "${ruleSlug}",
+          externalUserId: "${externalUserId}",
+          costUsd: 2.99,
+          provider: 'in_app_purchase'
+        };
+        window.parent.postMessage({ type: 'STREAKKIT_PURCHASE_INTENT', payload: payload }, '*');
+        if (window.StreakBridge && typeof window.StreakBridge.onPurchaseRequest === 'function') {
+          window.StreakBridge.onPurchaseRequest(JSON.stringify(payload));
+        } else {
+          alert('Redirecting to Google Play / StoreKit In-App Purchase...');
+        }
+      });
+    }
+
+    var btnPaywallCoins = document.getElementById('btnPaywallCoins');
+    if (btnPaywallCoins) {
+      btnPaywallCoins.addEventListener('click', function() {
+        var payload = {
+          action: 'STREAK_REPAIR',
+          brokenStreakLength: ${brokenStreakLength},
+          ruleSlug: "${ruleSlug}",
+          externalUserId: "${externalUserId}",
+          costCoins: 50,
+          provider: 'coins'
+        };
+        window.parent.postMessage({ type: 'STREAKKIT_PURCHASE_INTENT', payload: payload }, '*');
+        if (window.StreakBridge && typeof window.StreakBridge.onCoinSpend === 'function') {
+          window.StreakBridge.onCoinSpend(JSON.stringify(payload));
+        } else {
+          alert('50 Gems redeemed for Streak Rescue!');
+        }
+      });
+    }
+
     // State for interactive month calendar
     var curYear = ${calendar.year};
     var curMonth = ${calendar.month};
