@@ -614,4 +614,75 @@ object StreakKit {
             }
         })
     }
+
+    /**
+     * Streak Amnesty: Evaluates quarterly/dormant streak resurrection offer.
+     */
+    fun checkStreakAmnesty(
+        ruleSlug: String,
+        userId: String = "user_default",
+        minDormantDays: Int = 7,
+        onResult: (JSONObject?) -> Unit
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+            put("minDormantDays", minDormantDays)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/amnesty/evaluate")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult(null) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val eval = json.optJSONObject("evaluation")
+                mainHandler.post { onResult(eval) }
+            }
+        })
+    }
+
+    /**
+     * Claims Streak Amnesty and resurrects user's broken streak.
+     */
+    fun claimStreakAmnesty(
+        ruleSlug: String,
+        userId: String = "user_default",
+        onComplete: (Boolean, Int) -> Unit
+    ) {
+        val body = JSONObject().apply {
+            put("ruleSlug", ruleSlug)
+            put("externalUserId", userId)
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/streak/amnesty/claim")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onComplete(false, 0) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val success = json.optBoolean("success", false)
+                val resurrected = json.optInt("resurrectedStreak", 0)
+                mainHandler.post { onComplete(success, resurrected) }
+            }
+        })
+    }
 }

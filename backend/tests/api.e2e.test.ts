@@ -226,6 +226,7 @@ describe('StreakKit E2E API Integration', () => {
     assert.equal(res.headers['content-type'], 'text/html');
     assert.ok(res.body.includes('Day Streak'));
     assert.ok(res.body.includes('Share Milestone'));
+    assert.ok(res.body.includes('flame-tier-pill'));
     assert.ok(res.body.includes('closeBtn'));
     // Visual Monthly Calendar UI elements
     assert.ok(res.body.includes('monthCalendarView'));

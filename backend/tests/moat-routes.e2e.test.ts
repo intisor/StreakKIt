@@ -138,4 +138,52 @@ describe('Moat Routes E2E API Integration', () => {
     assert.equal(body.wrapped.userId, 'friend_a');
     assert.equal(body.wrapped.year, 2026);
   });
+
+  it('POST /v1/streak/amnesty/evaluate identifies churned user and claim restores streak', async () => {
+    const db = getDb();
+    const dormantUserId = 'dormant_learner_' + crypto.randomUUID().slice(0, 8);
+    // User had a 40-day streak that broke on 2026-10-15 (more than 7 days ago)
+    await db.execute(
+      `INSERT INTO user_streaks (
+        id, tenant_id, rule_id, external_user_id, current_streak, highest_streak,
+        last_completed_logical_date, last_broken_streak_length, last_broken_date
+      ) VALUES ($1, $2, $3, $4, 0, 40, '2026-10-14', 40, '2026-10-15')`,
+      [crypto.randomUUID(), tenantId, ruleId, dormantUserId]
+    );
+
+    // 1. Evaluate Amnesty
+    const evalRes = await app.inject({
+      method: 'POST',
+      url: '/v1/streak/amnesty/evaluate',
+      headers: { authorization: `Bearer ${publicKey}` },
+      payload: {
+        ruleSlug,
+        externalUserId: dormantUserId,
+        minDormantDays: 7
+      }
+    });
+
+    assert.equal(evalRes.statusCode, 200);
+    const evalBody = JSON.parse(evalRes.body);
+    assert.equal(evalBody.success, true);
+    assert.equal(evalBody.evaluation.eligible, true);
+    assert.equal(evalBody.evaluation.resurrectableStreak, 40);
+    assert.ok(evalBody.evaluation.pushCopy.title.includes('Amnesty'));
+
+    // 2. Claim Amnesty
+    const claimRes = await app.inject({
+      method: 'POST',
+      url: '/v1/streak/amnesty/claim',
+      headers: { authorization: `Bearer ${publicKey}` },
+      payload: {
+        ruleSlug,
+        externalUserId: dormantUserId
+      }
+    });
+
+    assert.equal(claimRes.statusCode, 200);
+    const claimBody = JSON.parse(claimRes.body);
+    assert.equal(claimBody.success, true);
+    assert.equal(claimBody.resurrectedStreak, 41); // Resurrected to 40 + 1!
+  });
 });

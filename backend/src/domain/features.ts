@@ -165,3 +165,152 @@ export function evaluateRestoreEligibility(
     reason: 'OK'
   };
 }
+
+export type FlameTierId = 'EMBER' | 'SAPPHIRE' | 'AMETHYST' | 'GOLD_OBSIDIAN';
+
+export interface FlameTierInfo {
+  tierId: FlameTierId;
+  name: string;
+  badge: string;
+  minStreak: number;
+  nextTierMinStreak: number | null;
+  primaryColor: string;
+  glowColor: string;
+  auraCss: string;
+  level: number;
+}
+
+/**
+ * Returns visual progression and cosmetic flame tiers based on streak count.
+ */
+export function getFlameEvolutionTier(streakDays: number): FlameTierInfo {
+  if (streakDays >= 100) {
+    return {
+      tierId: 'GOLD_OBSIDIAN',
+      name: 'Solar Obsidian',
+      badge: '👑 Solar Obsidian',
+      minStreak: 100,
+      nextTierMinStreak: null,
+      primaryColor: '#eab308',
+      glowColor: '#ca8a04',
+      auraCss: 'radial-gradient(circle, rgba(234,179,8,0.35) 0%, rgba(202,138,4,0) 70%)',
+      level: 4
+    };
+  }
+  if (streakDays >= 30) {
+    return {
+      tierId: 'AMETHYST',
+      name: 'Amethyst Nova',
+      badge: '⚡ Amethyst Nova',
+      minStreak: 30,
+      nextTierMinStreak: 100,
+      primaryColor: '#a855f7',
+      glowColor: '#7e22ce',
+      auraCss: 'radial-gradient(circle, rgba(168,85,247,0.3) 0%, rgba(126,34,206,0) 70%)',
+      level: 3
+    };
+  }
+  if (streakDays >= 7) {
+    return {
+      tierId: 'SAPPHIRE',
+      name: 'Sapphire Flame',
+      badge: '🔷 Sapphire Flame',
+      minStreak: 7,
+      nextTierMinStreak: 30,
+      primaryColor: '#3b82f6',
+      glowColor: '#1d4ed8',
+      auraCss: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(29,78,216,0) 70%)',
+      level: 2
+    };
+  }
+  return {
+    tierId: 'EMBER',
+    name: 'Bronze Ember',
+    badge: '🔥 Bronze Ember',
+    minStreak: 1,
+    nextTierMinStreak: 7,
+    primaryColor: '#f97316',
+    glowColor: '#c2410c',
+    auraCss: 'radial-gradient(circle, rgba(249,115,22,0.25) 0%, rgba(194,65,12,0) 70%)',
+    level: 1
+  };
+}
+
+export interface StreakAmnestyEvaluation {
+  eligible: boolean;
+  resurrectableStreak: number;
+  daysInactive: number;
+  expiresAtUtc: string;
+  amnestyToken: string;
+  pushCopy: {
+    title: string;
+    body: string;
+  };
+}
+
+/**
+ * Evaluates whether a churned/dormant user qualifies for quarterly Streak Amnesty.
+ * Automatically triggers when user has broken streak >= minBrokenStreak and has been dormant >= minDormantDays.
+ */
+export function evaluateStreakAmnesty(
+  currentDate: string,
+  currentStreak: number,
+  lastBrokenLength: number | null | undefined,
+  lastBrokenDate: string | null | undefined,
+  ruleName: string,
+  minBrokenStreak: number = 3,
+  minDormantDays: number = 7
+): StreakAmnestyEvaluation {
+  if (!lastBrokenLength || lastBrokenLength < minBrokenStreak || !lastBrokenDate) {
+    return {
+      eligible: false,
+      resurrectableStreak: 0,
+      daysInactive: 0,
+      expiresAtUtc: '',
+      amnestyToken: '',
+      pushCopy: { title: '', body: '' }
+    };
+  }
+
+  // Already active with high streak
+  if (currentStreak >= lastBrokenLength) {
+    return {
+      eligible: false,
+      resurrectableStreak: 0,
+      daysInactive: 0,
+      expiresAtUtc: '',
+      amnestyToken: '',
+      pushCopy: { title: '', body: '' }
+    };
+  }
+
+  const daysInactive = daysBetween(lastBrokenDate, currentDate);
+  if (daysInactive < minDormantDays) {
+    return {
+      eligible: false,
+      resurrectableStreak: 0,
+      daysInactive,
+      expiresAtUtc: '',
+      amnestyToken: '',
+      pushCopy: { title: '', body: '' }
+    };
+  }
+
+  // 48-hour resurrection token
+  const expires = new Date();
+  expires.setHours(expires.getHours() + 48);
+  const amnestyToken = `amnesty_${lastBrokenDate}_${lastBrokenLength}`;
+
+  return {
+    eligible: true,
+    resurrectableStreak: lastBrokenLength,
+    daysInactive,
+    expiresAtUtc: expires.toISOString(),
+    amnestyToken,
+    pushCopy: {
+      title: `🕊️ Streak Amnesty is Active!`,
+      body: `Complete 1 session today to resurrect your ${lastBrokenLength}-day ${ruleName} streak before it expires.`
+    }
+  };
+}
+

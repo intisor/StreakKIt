@@ -10,7 +10,9 @@ import crypto from 'node:crypto';
 import type { DbAdapter } from '../config/db.js';
 import {
   evaluateRestoreEligibility,
-  type VacationPauseRange
+  type VacationPauseRange,
+  evaluateStreakAmnesty,
+  type StreakAmnestyEvaluation
 } from './features.js';
 
 export interface CreatePauseInput {
@@ -383,5 +385,85 @@ export class MoatService {
         enabledInt
       ]
     );
+  }
+
+  /**
+   * Evaluates if a user is eligible for Streak Amnesty (churn recovery).
+   */
+  async evaluateAmnesty(
+    tenantId: string,
+    ruleSlug: string,
+    externalUserId: string,
+    minDormantDays: number = 7
+  ): Promise<StreakAmnestyEvaluation> {
+    const rule = await this.db.get<any>(
+      `SELECT id, name FROM streak_rules WHERE tenant_id = $1 AND slug = $2`,
+      [tenantId, ruleSlug]
+    );
+    if (!rule) throw new Error(`Rule ${ruleSlug} not found`);
+
+    const userStreak = await this.db.get<any>(
+      `SELECT current_streak, last_broken_streak_length, last_broken_date, timezone
+       FROM user_streaks
+       WHERE tenant_id = $1 AND rule_id = $2 AND external_user_id = $3`,
+      [tenantId, rule.id, externalUserId]
+    );
+
+    if (!userStreak) {
+      return {
+        eligible: false,
+        resurrectableStreak: 0,
+        daysInactive: 0,
+        expiresAtUtc: '',
+        amnestyToken: '',
+        pushCopy: { title: '', body: '' }
+      };
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return evaluateStreakAmnesty(
+      todayStr,
+      userStreak.current_streak,
+      userStreak.last_broken_streak_length,
+      userStreak.last_broken_date,
+      rule.name,
+      3,
+      minDormantDays
+    );
+  }
+
+  /**
+   * Claims a Streak Amnesty offer, restoring the user's broken streak.
+   */
+  async claimAmnesty(
+    tenantId: string,
+    ruleSlug: string,
+    externalUserId: string
+  ): Promise<{ success: boolean; resurrectedStreak: number }> {
+    const evalResult = await this.evaluateAmnesty(tenantId, ruleSlug, externalUserId, 0);
+    if (!evalResult.eligible) {
+      throw new Error('User is not eligible for Streak Amnesty');
+    }
+
+    const rule = await this.db.get<any>(
+      `SELECT id FROM streak_rules WHERE tenant_id = $1 AND slug = $2`,
+      [tenantId, ruleSlug]
+    );
+
+    const resurrected = evalResult.resurrectableStreak + 1;
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    await this.db.execute(
+      `UPDATE user_streaks
+       SET current_streak = $1,
+           last_completed_logical_date = $2,
+           last_broken_streak_length = NULL,
+           last_broken_date = NULL,
+           updated_at = datetime('now')
+       WHERE tenant_id = $3 AND rule_id = $4 AND external_user_id = $5`,
+      [resurrected, todayStr, tenantId, rule.id, externalUserId]
+    );
+
+    return { success: true, resurrectedStreak: resurrected };
   }
 }

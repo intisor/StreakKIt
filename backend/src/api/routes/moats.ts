@@ -295,4 +295,78 @@ export async function registerMoatRoutes(fastify: FastifyInstance) {
       return reply.status(200).send({ success: true, message: 'Preferences updated' });
     }
   );
+
+  /**
+   * POST /v1/streak/amnesty/evaluate
+   * Evaluates if a dormant user qualifies for Streak Amnesty churn recovery
+   */
+  fastify.post(
+    '/v1/streak/amnesty/evaluate',
+    { preHandler: authenticateApiKey },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const auth = request as AuthenticatedRequest;
+      const tenant = auth.tenant!;
+
+      const body = request.body as {
+        ruleSlug: string;
+        externalUserId: string;
+        minDormantDays?: number;
+      };
+
+      if (!body?.ruleSlug || !body?.externalUserId) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'ruleSlug and externalUserId are required'
+        });
+      }
+
+      const evaluation = await moatService.evaluateAmnesty(
+        tenant.id,
+        body.ruleSlug,
+        body.externalUserId,
+        body.minDormantDays ?? 7
+      );
+
+      return reply.status(200).send({ success: true, evaluation });
+    }
+  );
+
+  /**
+   * POST /v1/streak/amnesty/claim
+   * Consumes an amnesty token and resurrects the user's broken streak
+   */
+  fastify.post(
+    '/v1/streak/amnesty/claim',
+    { preHandler: authenticateApiKey },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const auth = request as AuthenticatedRequest;
+      const tenant = auth.tenant!;
+
+      const body = request.body as {
+        ruleSlug: string;
+        externalUserId: string;
+      };
+
+      if (!body?.ruleSlug || !body?.externalUserId) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'ruleSlug and externalUserId are required'
+        });
+      }
+
+      try {
+        const result = await moatService.claimAmnesty(
+          tenant.id,
+          body.ruleSlug,
+          body.externalUserId
+        );
+        return reply.status(200).send(result);
+      } catch (err: any) {
+        return reply.status(400).send({
+          error: 'AMNESTY_FAILED',
+          message: err.message
+        });
+      }
+    }
+  );
 }

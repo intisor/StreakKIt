@@ -10,6 +10,7 @@ import {
   StreakHistoryEntry,
   StreakPauseEntry
 } from '../../domain/calendar.js';
+import { getFlameEvolutionTier } from '../../domain/features.js';
 
 export interface StreakAnimationConfig {
   preset?: 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen';
@@ -425,9 +426,11 @@ function renderEmbedHtml(
     statusBadgeBg = '#7f1d1d';
   }
 
-  // Developer code-customized animation options
-  const primaryColor = anim.primaryColor || defaultThemeColor;
-  const glow = anim.glowColor ? `0 0 24px ${anim.glowColor}` : defaultGlow;
+  const flameTier = getFlameEvolutionTier(streak);
+
+  // Developer code-customized animation options or evolved flame tier color
+  const primaryColor = anim.primaryColor || (status === 'FROZEN' ? defaultThemeColor : flameTier.primaryColor);
+  const glow = anim.glowColor ? `0 0 24px ${anim.glowColor}` : (status === 'FROZEN' ? defaultGlow : `0 0 24px ${flameTier.glowColor}`);
   const speed = anim.speed && anim.speed > 0 ? anim.speed : 1.0;
   const preset = anim.preset || (status === 'FROZEN' ? 'frost' : 'flame');
   const particleCount = anim.particleCount && anim.particleCount > 0 ? anim.particleCount : 40;
@@ -913,6 +916,7 @@ function renderEmbedHtml(
   </div>
 
   <div class="card">
+    <div class="flame-tier-pill" style="display:inline-block; margin-bottom: 10px; padding: 4px 14px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid ${flameTier.primaryColor}; color: ${flameTier.primaryColor}; background: rgba(0,0,0,0.35);">${flameTier.badge} · Lvl ${flameTier.level}</div>
     <div class="flame-hero">
       <div id="lottie-container"></div>
       <div class="flame-fallback" id="flameFallback">${status === 'FROZEN' ? '❄️' : '🔥'}</div>
@@ -1449,6 +1453,27 @@ function renderEmbedHtml(
         if (active) requestAnimationFrame(animate);
       }
       animate();
+    }
+
+    var shareBtnEl = document.getElementById('shareBtn');
+    if (shareBtnEl) {
+      shareBtnEl.addEventListener('click', function() {
+        AudioEngine.playAscendingChords();
+        var shareMsg = "🔥 I'm on a " + ${streak} + "-day " + "${flameTier.name}" + " streak on " + "${ruleName}" + "! Can you beat my streak? #StreakKit";
+        if (navigator.share) {
+          navigator.share({
+            title: "${ruleName} Streak Milestone",
+            text: shareMsg,
+            url: window.location.href
+          }).catch(function() {});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(shareMsg).then(function() {
+            var orig = shareBtnEl.textContent;
+            shareBtnEl.textContent = '✓ Copied to Clipboard!';
+            setTimeout(function() { shareBtnEl.textContent = orig; }, 2000);
+          });
+        }
+      });
     }
   </script>
 </body>
