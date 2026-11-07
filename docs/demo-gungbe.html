@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreakKit for Learn Gungbe (com.learnguw) — Interactive Founder Pitch Simulator</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131c2e;
+      --border: #233554;
+      --accent-green: #10b981;
+      --accent-gold: #f59e0b;
+      --accent-blue: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 16px;
+    }
+    .pitch-header {
+      text-align: center;
+      max-width: 720px;
+      margin-bottom: 30px;
+    }
+    .pitch-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .pitch-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      justify-content: center;
+      max-width: 1060px;
+      width: 100%;
+    }
+    
+    /* Phone Mockup Frame */
+    .phone-container {
+      width: 360px;
+      height: 720px;
+      background: #000;
+      border-radius: 44px;
+      border: 8px solid #233554;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(16, 185, 129, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .phone-notch {
+      width: 140px;
+      height: 22px;
+      background: #233554;
+      margin: 0 auto;
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .phone-speaker { width: 44px; height: 4px; background: #0f172a; border-radius: 2px; }
+    .phone-screen {
+      flex: 1;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 18px 16px;
+    }
+    
+    /* Learn Gungbe App Header */
+    .app-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+    .streak-badge-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: #1e293b;
+      border: 1px solid var(--accent-gold);
+      border-radius: 18px;
+      color: var(--accent-gold);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .streak-badge-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+    }
+    
+    /* App Content */
+    .welcome-card {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .welcome-card h3 { font-size: 16px; font-weight: 800; color: #10b981; margin-bottom: 4px; }
+    .welcome-card p { font-size: 12px; color: #cbd5e1; line-height: 1.4; }
+    
+    .lesson-title-h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .lesson-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+    .lesson-card:hover { border-color: #38bdf8; }
+    .lesson-info { display: flex; flex-direction: column; gap: 3px; }
+    .lesson-gun { font-size: 14px; font-weight: 700; color: #f8fafc; }
+    .lesson-en { font-size: 12px; color: var(--text-muted); }
+    .btn-complete {
+      padding: 8px 14px;
+      background: #10b981;
+      border: none;
+      border-radius: 10px;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-complete:hover { filter: brightness(1.1); transform: scale(1.03); }
+    .btn-complete:active { transform: scale(0.97); }
+
+    /* Fake Android Notification Shade Popup */
+    .notif-shade {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #ef4444;
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 14px;
+      animation: pulse-ring 2s infinite;
+    }
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #ef4444;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .notif-body { font-size: 12px; color: #f8fafc; line-height: 1.3; }
+
+    /* Controls Panel */
+    .controls-panel {
+      flex: 1;
+      min-width: 320px;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .control-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+    }
+    .control-box h3 { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: #f8fafc; }
+    .control-actions { display: flex; flex-direction: column; gap: 10px; }
+    .action-btn {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-wa { background: #22c55e; color: #0f172a; }
+    .btn-wa:hover { background: #16a34a; color: white; }
+    .btn-outline { background: #1e293b; color: #cbd5e1; border: 1px solid var(--border); }
+    .btn-outline:hover { background: #334155; color: white; }
+    
+    /* Code Snippet Box */
+    .code-box {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #38bdf8;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    
+    /* Modal Simulation Overlay inside Phone */
+    .phone-modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .phone-modal-content {
+      background: #1e293b;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 15px 4px rgba(239, 68, 68, 0.6); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="pitch-header">
+    <span class="pitch-badge">Interactive Pitch Simulator</span>
+    <h1>StreakKit × Learn Gungbe</h1>
+    <p class="subtitle">
+      Simulating how the <strong>com.learnguw</strong> mobile app increases 30-day retention by 4× using StreakKit’s zero-dashboard, offline-first streak engine.
+    </p>
+  </div>
+
+  <div class="pitch-grid">
+    
+    <!-- Left: Phone Simulator -->
+    <div class="phone-container">
+      <div class="phone-notch"><div class="phone-speaker"></div></div>
+      <div class="phone-screen">
+        
+        <div class="app-topbar">
+          <div class="app-brand">
+            <span>🦉</span> Learn Gungbe
+          </div>
+          <button class="streak-badge-btn" id="streakBadgeBtn" onclick="toggleEmbedModal()">
+            🔥 <span id="appStreakCount">0</span>
+          </button>
+        </div>
+
+        <div class="welcome-card">
+          <h3>Kú àbọ̀! (Welcome!)</h3>
+          <p>Learn spoken Gun / Egun in 5 minutes a day. Keep your daily flame burning!</p>
+        </div>
+
+        <div class="lesson-title-h2">Today's Daily Lessons</div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-gun">1. Núdídó (Greetings)</span>
+            <span class="lesson-en">Morning & evening greetings in Gun</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Núdídó')">Start ✓</button>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-gun">2. Xàxá (Counting 1–20)</span>
+            <span class="lesson-en">Master numbers: Dèpó, Awè, Atòn...</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Xàxá')">Start ✓</button>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-gun">3. Gbèɖiɖi (Everyday Tones)</span>
+            <span class="lesson-en">Essential high and low pitch markers</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Gbèɖiɖi')">Start ✓</button>
+        </div>
+
+        <!-- Notification Preview Shade -->
+        <div class="notif-shade" id="notifShade" style="display: none;">
+          <div class="notif-header">
+            <span>🚨 DUOLINGO RED CHRONOMETER</span>
+            <span id="notifClock">01:42:15</span>
+          </div>
+          <div class="notif-body">
+            <strong>Don't let your Gungbe streak die!</strong> Complete 1 lesson before midnight to keep your flame alive.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Phone BottomSheet Embed Modal Simulation -->
+      <div class="phone-modal-overlay" id="phoneModalOverlay" onclick="if(event.target===this)toggleEmbedModal()">
+        <div class="phone-modal-content">
+          <div id="modalTierBadge" style="display:inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 800; margin-bottom: 8px;">🔥 BRONZE EMBER · LVL 1</div>
+          <div style="font-size: 48px; margin-bottom: 6px;">🔥</div>
+          <div style="font-size: 32px; font-weight: 800; color: #f59e0b;" id="modalStreakNum">0</div>
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 14px;">Day Gungbe Streak</div>
+          <button class="action-btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 8px;" onclick="shareToWhatsApp()">
+            💬 Share to WhatsApp Status
+          </button>
+          <button class="action-btn btn-outline" style="width: 100%; justify-content: center;" onclick="toggleEmbedModal()">
+            Close
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Developer Controls & WhatsApp Pitch Deck -->
+    <div class="controls-panel">
+      
+      <div class="control-box">
+        <h3>⚡ Pitch Controls & Scenarios</h3>
+        <div class="control-actions">
+          <button class="action-btn btn-primary" onclick="simulateHighStreak()">
+            🚀 Fast-Forward to 30-Day Amethyst Flame
+          </button>
+          <button class="action-btn btn-outline" onclick="toggleRedNotification()">
+            🚨 Trigger Duolingo Live Red Chronometer
+          </button>
+          <button class="action-btn btn-outline" onclick="simulateAmnesty()">
+            🕊️ Trigger "Streak Amnesty" Resurrection (Day 40 Churn)
+          </button>
+        </div>
+      </div>
+
+      <div class="control-box">
+        <h3>📲 Send to Learn Gungbe Founder</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Send the pre-formatted WhatsApp pitch directly to the developer's phone number with 1 tap:
+        </p>
+        <button class="action-btn btn-wa" onclick="openWhatsAppPitch()">
+          💬 Open WhatsApp with Pitch Message
+        </button>
+      </div>
+
+      <div class="control-box">
+        <h3>💻 3-Line Drop-In Code</h3>
+        <div class="code-box">
+// In Learn Gungbe when a lesson completes:
+StreakKit.ping("gungbe_lesson");
+
+// Show the Duolingo-grade modal UI:
+StreakKit.showModal(context, "gungbe_lesson");
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    var currentStreak = 0;
+    var audioCtx = null;
+
+    function playSuccessChord() {
+      try {
+        var AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        var freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        freqs.forEach(function(f, i) {
+          var osc = audioCtx.createOscillator();
+          var gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, audioCtx.currentTime + i * 0.08);
+          gain.gain.setValueAtTime(0.18, audioCtx.currentTime + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.08 + 0.5);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + i * 0.08);
+          osc.stop(audioCtx.currentTime + i * 0.08 + 0.55);
+        });
+      } catch (_) {}
+    }
+
+    function completeLesson(name) {
+      currentStreak++;
+      document.getElementById('appStreakCount').textContent = currentStreak;
+      document.getElementById('modalStreakNum').textContent = currentStreak;
+      playSuccessChord();
+      updateTierBadge();
+      toggleEmbedModal();
+    }
+
+    function updateTierBadge() {
+      var badge = document.getElementById('modalTierBadge');
+      if (currentStreak >= 100) {
+        badge.textContent = '👑 SOLAR OBSIDIAN · LVL 4';
+        badge.style.border = '1px solid #eab308';
+        badge.style.color = '#eab308';
+      } else if (currentStreak >= 30) {
+        badge.textContent = '⚡ AMETHYST NOVA · LVL 3';
+        badge.style.border = '1px solid #a855f7';
+        badge.style.color = '#a855f7';
+      } else if (currentStreak >= 7) {
+        badge.textContent = '🔷 SAPPHIRE FLAME · LVL 2';
+        badge.style.border = '1px solid #3b82f6';
+        badge.style.color = '#3b82f6';
+      } else {
+        badge.textContent = '🔥 BRONZE EMBER · LVL 1';
+        badge.style.border = '1px solid #f97316';
+        badge.style.color = '#f97316';
+      }
+    }
+
+    function toggleEmbedModal() {
+      var modal = document.getElementById('phoneModalOverlay');
+      modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function toggleRedNotification() {
+      var notif = document.getElementById('notifShade');
+      notif.style.display = (notif.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function simulateHighStreak() {
+      currentStreak = 30;
+      document.getElementById('appStreakCount').textContent = currentStreak;
+      document.getElementById('modalStreakNum').textContent = currentStreak;
+      updateTierBadge();
+      playSuccessChord();
+      toggleEmbedModal();
+    }
+
+    function simulateAmnesty() {
+      alert("🕊️ STREAK AMNESTY ACTIVATED!\nUser broke a 40-day Gungbe streak 14 days ago.\nStreakKit resurrects their streak back to Day 41 upon 1 lesson completion.");
+      currentStreak = 41;
+      document.getElementById('appStreakCount').textContent = currentStreak;
+      document.getElementById('modalStreakNum').textContent = currentStreak;
+      updateTierBadge();
+      playSuccessChord();
+      toggleEmbedModal();
+    }
+
+    function shareToWhatsApp() {
+      var msg = "🔥 I'm on a " + currentStreak + "-day streak on Learn Gungbe! Can you beat my streak? #LearnGungbe #StreakKit";
+      window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+    }
+
+    function openWhatsAppPitch() {
+      var pitch = "Hello Learn Gungbe Team! 🦉\n\nI love what you are building with the Learn Gungbe app on Google Play. To help your learners build a daily habit, we built an offline-first, Duolingo-grade streak engine called StreakKit.\n\nTake a look at how it looks in your app: https://streakkit.dev/demo/gungbe\n- 60fps Duolingo animated flame & monthly calendar\n- Red countdown notification timer in notification shade\n- Takes literally 3 lines of code in Flutter, React Native, or Android.\n\nWould you be open to a quick 5-min chat on how you can plug this in?";
+      window.open("https://wa.me/?text=" + encodeURIComponent(pitch), "_blank");
+    }
+  </script>
+</body>
+</html>

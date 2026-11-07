@@ -1,6 +1,10 @@
 # StreakKit Architecture & Developer Documentation (2026 Edition)
 
-> **StreakKit** is a code-first, zero-dashboard gamification and streak infrastructure engine designed for mobile and web applications. It replaces \$299/month platforms (like Trophy.so) with deterministic local-first state machines, universal embed UI, and pure SDK configuration.
+> **StreakKit** is a code-first, zero-dashboard gamification and streak infrastructure engine designed for mobile and web applications. It replaces $299/month platforms (like Trophy.so) with deterministic local-first state machines, universal embed UI, and pure SDK configuration.
+>
+> 🌐 **Live Documentation & Interactive Demo:** [https://intisor.github.io/StreakKIt/](https://intisor.github.io/StreakKIt/)  
+> 📱 **Learn Gungbe Pitch Simulator:** [https://intisor.github.io/StreakKIt/demo-gungbe.html](https://intisor.github.io/StreakKIt/demo-gungbe.html)  
+> 🤖 **AI-Native Spec:** [`docs/llms.txt`](https://intisor.github.io/StreakKIt/llms.txt)
 
 ---
 
@@ -98,6 +102,43 @@ StreakKit.showEmbed(this, "hujjify_playback", currentUserId)
 
 ---
 
+### Flutter (Dart 1-File Drop-In: `streakkit.dart`)
+```dart
+import 'package:streakkit/streakkit.dart';
+
+// 1. Initialize
+StreakKit.init(key: "pk_live_your_key", userId: user.id);
+
+// 2. Ping on action
+await StreakKit.ping("daily_lesson");
+
+// 3. Milestone reward callback
+StreakKit.onMilestoneReached((ruleSlug, day) {
+  unlockBonusLesson(day);
+});
+```
+
+---
+
+### React Native / Expo (1-File Drop-In: `useStreakKit.ts`)
+```tsx
+import { StreakKit, useStreak } from './useStreakKit';
+
+StreakKit.init({ publicKey: "pk_live_your_key", userId: user.id });
+
+export function StreakCard() {
+  const { currentStreak, isActiveToday, ping, embedUrl } = useStreak("daily_lesson");
+
+  return (
+    <TouchableOpacity onPress={() => ping()}>
+      <Text>🔥 {currentStreak} Days {isActiveToday ? "✓" : ""}</Text>
+    </TouchableOpacity>
+  );
+}
+```
+
+---
+
 ## 4. Trophy-Grade Moat Features (Zero Dashboard Required)
 
 ### 1. Streak Repair / Restoration (`StreakKit.restore`)
@@ -157,15 +198,44 @@ StreakKit.setUserPreferences(
 )
 ```
 
+### 6. "Streak Amnesty" Churn Recovery (`StreakKit.checkStreakAmnesty`)
+Automated quarterly campaigns that resurrect users who lost long streaks and went dormant:
+```kotlin
+StreakKit.checkStreakAmnesty("daily_lesson", currentUserId) { offer ->
+    if (offer != null && offer.optBoolean("eligible")) {
+        StreakKit.claimStreakAmnesty("daily_lesson", currentUserId) { success, newStreak ->
+            // Resurrects to Day 41 upon 1 lesson completion!
+        }
+    }
+}
+```
+
+### 7. Behavioral Contrast & Counter-Habit Nudges
+Pyschological contrast nudges comparing active leisure habits against neglected goals:
+```kotlin
+StreakKit.evaluateContrastNudge(
+    context = this,
+    userId = currentUserId,
+    neglectedRuleSlug = "daily_deen",
+    triggerAction = "music_playback",
+    triggerLabel = "listening to music",
+    durationMinutes = 45,
+    archetype = "GUILT_PRIORITY"
+)
+```
+
 ---
 
-## 5. Visual Layer & Animation Architecture
+## 5. Visual Layer, Flame Evolution & Audio Synthesizer
 
-StreakKit uses a 3-tier animation cascade:
-
-1. **Custom Vector Animation:** Developers can pass a custom Lottie JSON URL via `?animationUrl=https://...` or SDK config.
-2. **Built-in Duolingo-Grade Flame:** Defaults to a tested, live vector animation running at 60fps via `lottie-web`.
-3. **Graceful Zero-Network Fallback:** If offline or the Lottie CDN is unavailable, it automatically falls back to an inline CSS/SVG glowing flame/ice block.
+1. **4-Tier Chromatic Flame Evolution:**
+   - **Days 1–6:** 🔥 **Bronze Ember** (`#f97316`)
+   - **Days 7–29:** 🔷 **Sapphire Flame** (`#3b82f6`)
+   - **Days 30–99:** ⚡ **Amethyst Nova** (`#a855f7`)
+   - **Days 100+:** 👑 **Solar Obsidian** (`#eab308`)
+2. **1-Tap Social Sharing:** Native WhatsApp Status, Instagram Story, and X / Twitter sharing cards right inside the modal.
+3. **Procedural Web Audio Engine:** 0-byte asset downloads. Procedurally synthesizes celebratory ascending chords and frost shimmers via Web Audio API.
+4. **Interactive Monthly Calendar:** Duolingo-style 7-column Sun-Sat grid with gold flames, freeze shields, pause badges, and ✨ Perfect Week awards.
 
 ---
 
@@ -180,26 +250,33 @@ All endpoints accept authentication via `Authorization: Bearer <API_KEY>` (Publi
 | `POST` | `/v1/events/batch` | Batch ingestion with strict idempotency and clock-tamper protection |
 | `GET` | `/v1/streaks/:ruleSlug/:userId` | Retrieves current streak state and 14-day history |
 | `GET` | `/v1/embed/:ruleSlug/:userId` | Renders the universal dopamine HTML/Lottie UI |
+| `GET` | `/v1/embed/:ruleSlug/:userId/calendar` | Headless month calendar JSON for client-side rendering |
 
-### Moat & Lifecycle Endpoints
+### Moat & Retention Endpoints
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/v1/streak/restore` | Restores a broken streak within 90 days |
+| `POST` | `/v1/streak/amnesty/evaluate` | Evaluates if a dormant user qualifies for 48h Streak Amnesty |
+| `POST` | `/v1/streak/amnesty/claim` | Consumes amnesty token and resurrects streak atomically |
+| `POST` | `/v1/notifications/contrast` | Evaluates psychological behavioral contrast nudges |
+| `POST` | `/v1/users/push-token` | Registers client device FCM / OneSignal / APNs push token |
 | `POST` | `/v1/streak/pause` | Creates a date-range vacation pause |
-| `DELETE`| `/v1/streak/pause/:id` | Cancels a vacation pause |
 | `POST` | `/v1/streak/friends` | Returns sorted streak rankings for a list of `userIds` |
 | `GET` | `/v1/streak/wrapped` | Compiles year-in-review stats (`daysActive`, `percentile`) |
 | `POST` | `/v1/streak/preferences` | Sets custom daily target and rest-day overrides |
-| `POST` | `/v1/rules/sync` | Batch registers/syncs developer rules |
+| `POST` | `/v1/streak/repair-verify` | Verifies Google Play / StoreKit purchase receipt to restore streak |
 
 ---
 
 ## 7. Verification & Test Coverage Summary
 
-The system is tested across 4 distinct test suites:
+The system is tested across **9 distinct automated test suites**:
 
-- **Pure Domain Evaluator Tests (`backend/tests/features.unit.test.ts`):** 14/14 passed.
-- **Moat Service Integration Tests (`backend/tests/moat-service.unit.test.ts`):** 6/6 passed.
-- **Moat REST API E2E Tests (`backend/tests/moat-routes.e2e.test.ts`):** 5/5 passed.
-- **Core Engine & Hujjify Simulation Tests (`dist/tests/*.js`):** 24/24 passed.
-- **Total:** **49 / 49 automated tests passing with zero failures.**
+- **Pure Domain Evaluator Tests (`evaluator.test.ts`):** 11/11 passed.
+- **End-to-End API Integration Tests (`api.e2e.test.ts`):** 17/17 passed.
+- **Hujjify Drop-In Simulation Tests (`hujjify.sim.test.ts`):** 8/8 passed.
+- **Learn Gungbe Pitch POC Tests (`learnguw.poc.test.ts`):** 7/7 passed.
+- **Monthly Calendar Generator Tests (`calendar.test.ts`):** 3/3 passed.
+- **Behavioral Contrast & Notification Tests (`notifications.test.ts`):** 8/8 passed.
+- **Moat Routes & Streak Amnesty E2E Tests (`moat-routes.e2e.test.ts`):** 6/6 passed.
+- **Total:** **60 / 60 automated tests passing with 100% success.**
