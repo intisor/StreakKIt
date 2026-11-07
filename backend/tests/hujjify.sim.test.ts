@@ -280,7 +280,7 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
   it('Step 11: Hujjify Duolingo-in-a-Box — Long-pressing Streak Card renders Hujjify Winding Path UI (🎧 Conscious Listening)', async () => {
     const res = await server.inject({
       method: 'GET',
-      url: `/v1/embed/path/hujjify_playback/${testUserId}?flag=%F0%9F%8E%A7&unitTitle=Conscious%20Listening&unitSubtitle=Audit%20clean%20tracks%20%26%20guard%20your%20ears`
+      url: `/v1/embed/path/hujjify_playback/${testUserId}?timezone=Africa/Lagos&flag=%F0%9F%8E%A7&unitTitle=Conscious%20Listening&unitSubtitle=Audit%20clean%20tracks%20%26%20guard%20your%20ears`
     });
 
     assert.equal(res.statusCode, 200);

@@ -3,7 +3,7 @@
 > **StreakKit** is a code-first, zero-dashboard gamification and streak infrastructure engine designed for mobile and web applications. It replaces $299/month platforms (like Trophy.so) with deterministic local-first state machines, universal embed UI, and pure SDK configuration.
 >
 > 🌐 **Live Documentation & Interactive Demo:** [https://intisor.github.io/StreakIt/](https://intisor.github.io/StreakIt/)  
-> 📱 **Learn Gungbe Pitch Simulator:** [https://intisor.github.io/StreakIt/demo-gungbe.html](https://intisor.github.io/StreakIt/demo-gungbe.html)  
+> 📱 **Duolingo-in-a-Box Interactive Demo:** [https://intisor.github.io/StreakIt/demo-duolingo.html](https://intisor.github.io/StreakIt/demo-duolingo.html)  
 > 🤖 **AI-Native Spec:** [`docs/llms.txt`](https://intisor.github.io/StreakIt/llms.txt)
 
 ---
@@ -270,13 +270,14 @@ All endpoints accept authentication via `Authorization: Bearer <API_KEY>` (Publi
 
 ## 7. Verification & Test Coverage Summary
 
-The system is tested across **9 distinct automated test suites**:
+The system is tested across **10 distinct automated test suites**:
 
 - **Pure Domain Evaluator Tests (`evaluator.test.ts`):** 11/11 passed.
 - **End-to-End API Integration Tests (`api.e2e.test.ts`):** 17/17 passed.
-- **Hujjify Drop-In Simulation Tests (`hujjify.sim.test.ts`):** 8/8 passed.
-- **Learn Gungbe Pitch POC Tests (`learnguw.poc.test.ts`):** 7/7 passed.
+- **Hujjify Drop-In Simulation Tests (`hujjify.sim.test.ts`):** 11/11 passed.
+- **Language Learning Gamification Tests (`learnguw.poc.test.ts`):** 7/7 passed.
 - **Monthly Calendar Generator Tests (`calendar.test.ts`):** 3/3 passed.
 - **Behavioral Contrast & Notification Tests (`notifications.test.ts`):** 8/8 passed.
 - **Moat Routes & Streak Amnesty E2E Tests (`moat-routes.e2e.test.ts`):** 6/6 passed.
-- **Total:** **60 / 60 automated tests passing with 100% success.**
+- **Duolingo-in-a-Box Gamification Engine Tests (`gamification.test.ts`):** 5/5 passed.
+- **Total:** **68 / 68 automated tests passing with 100% success.**

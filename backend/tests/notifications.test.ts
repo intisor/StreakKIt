@@ -58,8 +58,8 @@ describe('Behavioral Contrast & Counter-Habit Nudges', () => {
         durationMinutes: 30
       },
       neglectedGoal: {
-        ruleSlug: 'gungbe_lesson',
-        ruleName: 'Learn Gungbe',
+        ruleSlug: 'daily_language',
+        ruleName: 'Daily Language Practice',
         domain: 'language',
         currentStreak: 7,
         completedToday: false
@@ -78,8 +78,8 @@ describe('Behavioral Contrast & Counter-Habit Nudges', () => {
         durationMinutes: 60
       },
       neglectedGoal: {
-        ruleSlug: 'gungbe_lesson',
-        ruleName: 'Learn Gungbe',
+        ruleSlug: 'daily_language',
+        ruleName: 'Daily Language Practice',
         domain: 'language',
         currentStreak: 5,
         completedToday: false

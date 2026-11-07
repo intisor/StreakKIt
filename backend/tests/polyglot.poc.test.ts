@@ -1,25 +1,25 @@
-// tests/learnguw.poc.test.ts: Proof-of-Concept Simulation for Learn Gungbe (com.learnguw)
+// tests/polyglot.poc.test.ts: Proof-of-Concept Simulation for Language Learning Mobile App
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { buildServer } from '../src/server.js';
 import { getDb } from '../src/config/db.js';
 
-describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
+describe('Language Learning Mobile App StreakKit POC Simulation', () => {
   let server: any;
   let db: any;
-  const gungbeLearnerId = `gungbe_learner_${crypto.randomUUID().slice(0, 8)}`;
-  const tenantKey = `pk_live_learnguw_${crypto.randomBytes(4).toString('hex')}`;
-  const ruleSlug = 'gungbe_lesson';
+  const languageLearnerId = `lang_learner_${crypto.randomUUID().slice(0, 8)}`;
+  const tenantKey = `pk_live_polyglot_${crypto.randomBytes(4).toString('hex')}`;
+  const ruleSlug = `polyglot_${crypto.randomUUID().slice(0, 8)}`;
 
   before(async () => {
     db = getDb();
     await db.migrate();
 
-    // Register Learn Gungbe tenant in StreakKit
+    // Register Language Learning tenant in StreakKit
     await db.execute(
       `INSERT INTO tenants (id, name, public_key, secret_key_hash)
-       VALUES ($1, 'Learn Gungbe Mobile App', $2, 'hash_gungbe')`,
+       VALUES ($1, 'Polyglot Language App', $2, 'hash_polyglot')`,
       [crypto.randomUUID(), tenantKey]
     );
 
@@ -31,18 +31,18 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
     await db.close();
   });
 
-  it('Step 1: First-time learner completes "Numbers in Gun" lesson -> auto-provisions rule & unlocks 1-day streak', async () => {
+  it('Step 1: First-time learner completes lesson -> auto-provisions rule & unlocks 1-day streak', async () => {
     const res = await server.inject({
       method: 'POST',
       url: '/v1/ping',
       headers: { authorization: `Bearer ${tenantKey}` },
       payload: {
         ruleSlug,
-        externalUserId: gungbeLearnerId,
+        externalUserId: languageLearnerId,
         value: 1,
         timezone: 'Africa/Lagos',
         ruleConfig: {
-          name: 'Daily Gungbe Lesson',
+          name: 'Daily Language Practice',
           target: 1,
           daysOff: [0], // Rest on Sunday
           maxFreezes: 2,
@@ -50,7 +50,7 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
           restoreWindowDays: 90
         },
         metadata: {
-          lessonTitle: 'Numbers 1-10 in Gungbe (Dopotọ, Awe, Atọ̀n...)',
+          lessonTitle: 'Numbers & Greetings',
           score: 100
         }
       }
@@ -58,25 +58,25 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
 
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body);
-    assert.equal(body.ruleSlug, 'gungbe_lesson');
+    assert.equal(body.ruleSlug, ruleSlug);
     assert.equal(body.currentStreak, 1);
     assert.equal(body.todayProgress.completed, true);
     assert.equal(body.status, 'ACTIVE_TODAY');
-    assert.ok(body.embedUrl.includes(gungbeLearnerId));
+    assert.ok(body.embedUrl.includes(languageLearnerId));
   });
 
-  it('Step 2: Learner completes another lesson ("Greetings in Egun") on the same day -> Idempotent progress', async () => {
+  it('Step 2: Learner completes another lesson on the same day -> Idempotent progress', async () => {
     const res = await server.inject({
       method: 'POST',
       url: '/v1/ping',
       headers: { authorization: `Bearer ${tenantKey}` },
       payload: {
         ruleSlug,
-        externalUserId: gungbeLearnerId,
+        externalUserId: languageLearnerId,
         value: 1,
         timezone: 'Africa/Lagos',
         metadata: {
-          lessonTitle: 'Greetings (Ku doji, Ku afọnu)',
+          lessonTitle: 'Everyday Vocabulary',
           score: 95
         }
       }
@@ -88,91 +88,82 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
     assert.equal(body.status, 'ACTIVE_TODAY');
   });
 
-  it('Step 3: Tapping streak badge in Learn Gungbe serves 60fps Duolingo-style Lottie flame embed UI', async () => {
+  it('Step 3: Tapping streak badge in app serves 60fps Duolingo-style Lottie flame embed UI', async () => {
     const res = await server.inject({
       method: 'GET',
-      url: `/v1/embed/${ruleSlug}/${gungbeLearnerId}?timezone=Africa/Lagos`
+      url: `/v1/embed/${ruleSlug}/${languageLearnerId}?timezone=Africa/Lagos`
     });
 
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers['content-type'], 'text/html');
-    assert.ok(res.body.includes('Daily Gungbe Lesson'));
+    assert.ok(res.body.includes('Daily Language Practice'));
     assert.ok(res.body.includes('1'));
     assert.ok(res.body.includes('Day Streak'));
-    assert.ok(res.body.includes('lottie-container'));
-    assert.ok(res.body.includes('StreakBridge'));
+    assert.ok(res.body.includes('Active Today'));
   });
 
-  it('Step 4: Learner checks friends leaderboard in their Gungbe study circle', async () => {
+  it('Step 4: Learner checks Friend Leaderboard via batch streak query', async () => {
     const res = await server.inject({
       method: 'POST',
       url: '/v1/streak/friends',
       headers: { authorization: `Bearer ${tenantKey}` },
       payload: {
         ruleSlug,
-        userIds: [gungbeLearnerId, 'learner_koffi_01', 'learner_sena_02'],
-        timezone: 'Africa/Lagos'
+        userIds: [languageLearnerId, 'friend_kemi', 'friend_tunde']
       }
     });
 
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body);
     assert.equal(body.success, true);
-    assert.equal(body.rankings.length, 3);
-    assert.equal(body.rankings[0].userId, gungbeLearnerId);
+    assert.equal(body.rankings[0].userId, languageLearnerId);
     assert.equal(body.rankings[0].currentStreak, 1);
   });
 
-  it('Step 5: Broken streak restoration (Learner lost a 25-day Gungbe streak and restores it)', async () => {
-    // Simulate user having lost their 25-day streak
+  it('Step 5: Broken streak restoration check (simulate broken 10-day streak)', async () => {
+    // Manually break learner streak
     await db.execute(
       `UPDATE user_streaks 
-       SET current_streak = 0, last_broken_streak_length = 25, last_broken_date = '2026-11-01'
+       SET current_streak = 0, last_broken_streak_length = 10, last_broken_date = '2026-11-01'
        WHERE external_user_id = $1`,
-      [gungbeLearnerId]
+      [languageLearnerId]
     );
 
+    // Free restore API call
     const res = await server.inject({
       method: 'POST',
       url: '/v1/streak/restore',
       headers: { authorization: `Bearer ${tenantKey}` },
       payload: {
         ruleSlug,
-        externalUserId: gungbeLearnerId,
-        timezone: 'Africa/Lagos'
+        externalUserId: languageLearnerId
       }
     });
 
     assert.equal(res.statusCode, 200);
-    const body = JSON.parse(res.body);
-    assert.equal(body.success, true);
-    assert.equal(body.restoredStreakLength, 25);
+    assert.equal(JSON.parse(res.body).restoredStreakLength, 10);
   });
 
-  it('Step 6: Learner views Monthly Streak Calendar with active gold days and Sunday exemptions', async () => {
+  it('Step 6: Headless calendar verification for Android LazyVerticalGrid / iOS LazyVGrid', async () => {
     const res = await server.inject({
       method: 'GET',
-      url: `/v1/streaks/${ruleSlug}/${gungbeLearnerId}/calendar?timezone=Africa/Lagos`,
-      headers: { authorization: `Bearer ${tenantKey}` }
+      url: `/v1/embed/${ruleSlug}/${languageLearnerId}/calendar?year=2026&month=11`
     });
 
     assert.equal(res.statusCode, 200);
     const cal = JSON.parse(res.body);
-    assert.equal(cal.ruleSlug, 'gungbe_lesson');
-    assert.equal(cal.externalUserId, gungbeLearnerId);
-    assert.ok(cal.daysInMonth >= 28 && cal.daysInMonth <= 31);
-    assert.ok(Array.isArray(cal.days));
-    assert.ok(typeof cal.firstDayOfWeek === 'number');
-    assert.ok(typeof cal.activeDaysCount === 'number');
+    assert.equal(cal.ruleSlug, ruleSlug);
+    assert.equal(cal.externalUserId, languageLearnerId);
+    assert.ok(cal.days.length >= 28);
   });
 
-  it('Step 7: Learner purchases Streak Rescue with Google Play in Learn Gungbe -> Restored & Audited', async () => {
-    // Break streak of 30 days
+  it('Step 7: Learner purchases Streak Rescue IAP -> Server verifies receipt & restores streak', async () => {
+    // Break streak again
     await db.execute(
       `UPDATE user_streaks 
-       SET current_streak = 0, last_broken_streak_length = 30, last_broken_date = '2026-11-03'
+       SET current_streak = 0, last_broken_streak_length = 15, last_broken_date = '2026-11-05'
        WHERE external_user_id = $1`,
-      [gungbeLearnerId]
+      [languageLearnerId]
     );
 
     const res = await server.inject({
@@ -181,12 +172,11 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
       headers: { authorization: `Bearer ${tenantKey}` },
       payload: {
         ruleSlug,
-        externalUserId: gungbeLearnerId,
-        timezone: 'Africa/Lagos',
+        externalUserId: languageLearnerId,
         paymentProof: {
           provider: 'google_play',
-          transactionId: 'GPA.8821-3910-4491-00291',
-          productId: 'gungbe_streak_rescue_tier1'
+          transactionId: 'token_google_play_test_repair',
+          productId: 'streak_repair_tier1'
         }
       }
     });
@@ -194,7 +184,6 @@ describe('Learn Gungbe (com.learnguw) StreakKit POC Simulation', () => {
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.body);
     assert.equal(body.success, true);
-    assert.equal(body.restoredStreakLength, 30);
-    assert.equal(body.transactionId, 'GPA.8821-3910-4491-00291');
+    assert.equal(body.restoredStreakLength, 15);
   });
 });

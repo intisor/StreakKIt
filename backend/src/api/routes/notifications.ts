@@ -110,7 +110,7 @@ export async function registerNotificationRoutes(fastify: FastifyInstance) {
       // Infer domain from rule name or slug if not passed
       const domain = body.domain || (
         rule.slug.includes('deen') || rule.slug.includes('quran') || rule.slug.includes('hujjify') ? 'deen'
-        : rule.slug.includes('lesson') || rule.slug.includes('gungbe') || rule.slug.includes('lang') ? 'learning'
+        : rule.slug.includes('lesson') || rule.slug.includes('vocab') || rule.slug.includes('lang') ? 'learning'
         : rule.slug.includes('fit') || rule.slug.includes('workout') ? 'fitness'
         : 'habits'
       );

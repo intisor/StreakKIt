@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreakKit — Duolingo-in-a-Box Interactive Simulator</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131c2e;
+      --border: #233554;
+      --accent-green: #10b981;
+      --accent-gold: #f59e0b;
+      --accent-blue: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 16px;
+    }
+    .pitch-header {
+      text-align: center;
+      max-width: 760px;
+      margin-bottom: 30px;
+    }
+    .pitch-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 12px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .pitch-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      max-width: 1100px;
+      width: 100%;
+    }
+    @media (min-width: 900px) {
+      .pitch-grid { grid-template-columns: 380px 1fr; }
+    }
+
+    /* Phone Mockup */
+    .phone-container {
+      background: #020617;
+      border: 10px solid #1e293b;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 700px;
+    }
+    .phone-notch {
+      height: 24px;
+      background: #1e293b;
+      width: 150px;
+      margin: 0 auto;
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .phone-speaker {
+      width: 44px;
+      height: 4px;
+      background: #334155;
+      border-radius: 2px;
+    }
+    .phone-screen {
+      flex: 1;
+      background: #131f24;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #233554;
+      margin-bottom: 16px;
+    }
+    .topbar-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stat-pill {
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .streak-badge-btn {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .streak-badge-btn:active { transform: scale(0.96); }
+
+    .daily-goal-box {
+      border: 2px solid #37464f;
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      background: #131f24;
+    }
+    .daily-goal-title {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+    }
+    .daily-goal-bar {
+      width: 100%;
+      height: 10px;
+      background: #37464f;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .daily-goal-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #58cc02, #89e219);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .unit-card {
+      background: #58cc02;
+      border-bottom: 4px solid #46a302;
+      border-radius: 16px;
+      padding: 14px;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+    .unit-meta {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+    .unit-name {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 2px;
+    }
+    .unit-desc {
+      font-size: 13px;
+      opacity: 0.95;
+    }
+
+    .lesson-title-h2 {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .lesson-card {
+      background: #1f2d35;
+      border: 1px solid #37464f;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lesson-info span { display: block; }
+    .lesson-main { font-weight: 800; font-size: 14px; color: #f8fafc; }
+    .lesson-sub { font-size: 12px; color: #94a3b8; }
+    .btn-complete {
+      background: #58cc02;
+      color: #ffffff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #46a302;
+    }
+    .btn-complete:active { transform: translateY(2px); box-shadow: none; }
+
+    /* Red Chronometer Alert in Phone */
+    .notif-shade {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 14px;
+      animation: pulse-ring 2s infinite;
+    }
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      color: #ef4444;
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .notif-body { font-size: 12px; color: #fecaca; line-height: 1.4; }
+
+    /* BottomSheet Modal in Phone */
+    .phone-modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: flex-end;
+      z-index: 50;
+    }
+    .phone-modal-overlay.open { display: flex; }
+    .phone-modal-content {
+      background: #1f2d35;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      border: 1px solid #37464f;
+      width: 100%;
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    /* Right: Control Board */
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .panel-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .action-btn {
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: #58cc02; color: #fff; box-shadow: 0 3px 0 #46a302; }
+    .btn-amber { background: #f59e0b; color: #000; font-weight: 800; }
+    .btn-blue { background: #1cb0f6; color: #fff; }
+    .btn-red { background: #ff4b4b; color: #fff; }
+    .btn-outline { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .action-btn:hover { filter: brightness(1.1); }
+
+    pre code {
+      display: block;
+      background: #020617;
+      border: 1px solid #1e293b;
+      padding: 14px;
+      border-radius: 12px;
+      color: #38bdf8;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 15px 4px rgba(239, 68, 68, 0.6); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="pitch-header">
+    <span class="pitch-badge">Interactive Engine Simulator</span>
+    <h1>Duolingo-in-a-Box Drop-In Engine</h1>
+    <p class="subtitle">
+      Experience StreakKit's complete gamification stack: Hearts (lives + auto-refill), Gems currency, Daily XP goal (0/20 XP), and the S-Curve Winding Path UI.
+    </p>
+  </div>
+
+  <div class="pitch-grid">
+    
+    <!-- Left: Phone Simulator -->
+    <div class="phone-container">
+      <div class="phone-notch"><div class="phone-speaker"></div></div>
+      <div class="phone-screen">
+        
+        <div class="app-topbar">
+          <div class="topbar-stats">
+            <span class="stat-pill">🦉 Polyglot</span>
+            <span class="stat-pill" style="color:#1cb0f6;" id="gemsDisplay">💎 50</span>
+            <span class="stat-pill" style="color:#ff4b4b;" id="heartsDisplay">❤️ 5</span>
+          </div>
+          <button class="streak-badge-btn" id="streakBadgeBtn" onclick="toggleEmbedModal()">
+            🔥 <span id="appStreakCount">0</span>
+          </button>
+        </div>
+
+        <div class="daily-goal-box">
+          <div class="daily-goal-title">
+            <span>🚩 Daily goal</span>
+            <span id="xpGoalLabel">0 / 20 XP</span>
+          </div>
+          <div class="daily-goal-bar">
+            <div class="daily-goal-fill" id="xpGoalFill"></div>
+          </div>
+        </div>
+
+        <div class="unit-card">
+          <div class="unit-meta">Unit 1 · 0/3</div>
+          <div class="unit-name">Greetings & Phrases</div>
+          <div class="unit-desc">Say hello and introduce yourself</div>
+        </div>
+
+        <div class="lesson-title-h2">Today's Daily Lessons</div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-main">1. Essential Greetings</span>
+            <span class="lesson-sub">+10 XP · 3 min quiz</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Greetings')">Start ✓</button>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-main">2. Numbers & Counting</span>
+            <span class="lesson-sub">+10 XP · 4 min quiz</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Counting')">Start ✓</button>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-info">
+            <span class="lesson-main">3. Everyday Dialogue</span>
+            <span class="lesson-sub">+10 XP · 5 min practice</span>
+          </div>
+          <button class="btn-complete" onclick="completeLesson('Dialogue')">Start ✓</button>
+        </div>
+
+        <!-- Notification Preview Shade -->
+        <div class="notif-shade" id="notifShade" style="display: none;">
+          <div class="notif-header">
+            <span>🚨 DUOLINGO RED CHRONOMETER</span>
+            <span id="notifClock">01:42:15</span>
+          </div>
+          <div class="notif-body">
+            <strong>Don't let your daily streak die!</strong> Complete 1 lesson before midnight to keep your flame alive.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Phone BottomSheet Embed Modal Simulation -->
+      <div class="phone-modal-overlay" id="phoneModalOverlay" onclick="if(event.target===this)toggleEmbedModal()">
+        <div class="phone-modal-content">
+          <div id="modalTierBadge" style="display:inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 800; margin-bottom: 8px; background: rgba(245, 158, 11, 0.2); color: #f59e0b;">🔥 BRONZE EMBER · LVL 1</div>
+          <div style="font-size: 48px; margin-bottom: 6px;" id="modalFlameIcon">🔥</div>
+          <div style="font-size: 32px; font-weight: 800; color: #f59e0b;" id="modalStreakNum">0</div>
+          <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 14px;">Day Streak Active</div>
+          <button class="action-btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 8px;" onclick="shareMilestone()">
+            🚀 Share Milestone
+          </button>
+          <button class="action-btn btn-outline" style="width: 100%; justify-content: center;" onclick="toggleEmbedModal()">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Interactive Controls -->
+    <div>
+      
+      <!-- Panel 1: Simulation Triggers -->
+      <div class="panel-card">
+        <div class="panel-title">🎮 Gamification Triggers</div>
+        <div class="panel-desc">Test real-time heart consumption, daily XP accumulation, gem rewards, and flame tier evolution:</div>
+        
+        <div class="btn-group">
+          <button class="action-btn btn-primary" onclick="completeLesson('Interactive Lesson')">
+            ✓ Complete Lesson (+10 XP)
+          </button>
+          <button class="action-btn btn-red" onclick="makeMistake()">
+            ✗ Wrong Answer (-1 ❤️ Heart)
+          </button>
+          <button class="action-btn btn-blue" onclick="refillHearts()">
+            💎 Refill Hearts (50 Gems)
+          </button>
+          <button class="action-btn btn-amber" onclick="simulateStreak(15)">
+            🔥 Fast-Forward to 15-Day Streak
+          </button>
+          <button class="action-btn btn-outline" onclick="triggerUrgentAlert()">
+            🚨 Trigger Red Chronometer
+          </button>
+          <button class="action-btn btn-outline" onclick="triggerAmnesty()">
+            🕊️ Simulate Streak Amnesty
+          </button>
+        </div>
+
+        <div style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
+          <strong>Live State:</strong> Streak: <span id="stateStreak">0</span> | Hearts: <span id="stateHearts">5/5</span> | Gems: <span id="stateGems">50</span> | XP Today: <span id="stateXp">0/20</span>
+        </div>
+      </div>
+
+      <!-- Panel 2: Drop-In Code Integration -->
+      <div class="panel-card">
+        <div class="panel-title">⚡ 3-Line Drop-In SDK</div>
+        <div class="panel-desc">How apps embed this entire gamification engine with zero dashboards:</div>
+        
+        <pre><code>// 1. Initialize once:
+StreakKit.init(context = this, rules = listOf(
+    StreakRule(slug = "daily_lesson", name = "Daily Lesson", target = 1)
+))
+
+// 2. Ping streak + award XP on lesson completion:
+StreakKit.ping(this, "daily_lesson")
+StreakKit.addXp(amount = 10, unitId = "unit_1")
+
+// 3. Deduct heart on mistake & open Duolingo Winding Path UI:
+StreakKit.consumeHeart()
+StreakKit.showDuolingoPath(this, "daily_lesson", flag = "🇳🇬", unitTitle = "Greetings")</code></pre>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    var streak = 0;
+    var hearts = 5;
+    var gems = 50;
+    var xp = 0;
+    var targetXp = 20;
+
+    function updateUi() {
+      document.getElementById('appStreakCount').textContent = streak;
+      document.getElementById('modalStreakNum').textContent = streak;
+      document.getElementById('heartsDisplay').textContent = '❤️ ' + hearts;
+      document.getElementById('gemsDisplay').textContent = '💎 ' + gems;
+      document.getElementById('xpGoalLabel').textContent = xp + ' / ' + targetXp + ' XP';
+      var pct = Math.min(100, Math.round((xp / targetXp) * 100));
+      document.getElementById('xpGoalFill').style.width = pct + '%';
+
+      document.getElementById('stateStreak').textContent = streak;
+      document.getElementById('stateHearts').textContent = hearts + '/5';
+      document.getElementById('stateGems').textContent = gems;
+      document.getElementById('stateXp').textContent = xp + '/' + targetXp;
+
+      // Tier Evolution
+      var badge = document.getElementById('modalTierBadge');
+      var icon = document.getElementById('modalFlameIcon');
+      if (streak >= 30) {
+        badge.textContent = '👑 SOLAR OBSIDIAN · LVL 4';
+        badge.style.color = '#e2e8f0';
+        badge.style.background = 'rgba(226, 232, 240, 0.2)';
+        icon.textContent = '👑';
+      } else if (streak >= 14) {
+        badge.textContent = '⚡ AMETHYST NOVA · LVL 3';
+        badge.style.color = '#c084fc';
+        badge.style.background = 'rgba(192, 132, 252, 0.2)';
+        icon.textContent = '⚡';
+      } else if (streak >= 7) {
+        badge.textContent = '🔷 SAPPHIRE FLAME · LVL 2';
+        badge.style.color = '#38bdf8';
+        badge.style.background = 'rgba(56, 189, 248, 0.2)';
+        icon.textContent = '🔷';
+      } else {
+        badge.textContent = '🔥 BRONZE EMBER · LVL 1';
+        badge.style.color = '#f59e0b';
+        badge.style.background = 'rgba(245, 158, 11, 0.2)';
+        icon.textContent = '🔥';
+      }
+    }
+
+    function completeLesson(title) {
+      if (hearts <= 0) {
+        alert("❤️ You are out of hearts! Refill with gems or practice to earn more.");
+        return;
+      }
+      streak = Math.max(1, streak + 1);
+      xp += 10;
+      if (xp >= targetXp && xp - 10 < targetXp) {
+        gems += 10;
+        alert("🎉 Daily Goal Reached (" + xp + "/" + targetXp + " XP)! You earned +10 bonus Gems 💎!");
+      } else {
+        alert("✓ Completed " + title + "! +10 XP awarded.");
+      }
+      updateUi();
+    }
+
+    function makeMistake() {
+      if (hearts > 0) {
+        hearts -= 1;
+        updateUi();
+        if (hearts === 0) {
+          alert("💔 Out of hearts! Refill using 50 Gems to continue learning.");
+        }
+      }
+    }
+
+    function refillHearts() {
+      if (gems < 50) {
+        alert("Insufficient gems! You need 50 gems to refill hearts.");
+        return;
+      }
+      gems -= 50;
+      hearts = 5;
+      updateUi();
+      alert("✨ Hearts fully restored (5/5 ❤️) using 50 Gems!");
+    }
+
+    function simulateStreak(val) {
+      streak = val;
+      updateUi();
+      toggleEmbedModal();
+    }
+
+    function toggleEmbedModal() {
+      var overlay = document.getElementById('phoneModalOverlay');
+      overlay.classList.toggle('open');
+    }
+
+    function shareMilestone() {
+      alert("🚀 Milestone shared! Can your friends beat your " + streak + "-day streak? #StreakKit");
+    }
+
+    function triggerUrgentAlert() {
+      var shade = document.getElementById('notifShade');
+      shade.style.display = 'block';
+      shade.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function triggerAmnesty() {
+      alert("🕊️ STREAK AMNESTY CAMPAIGN TRIGGERED:\n'Welcome back! Your broken 14-day streak has been resurrected free of charge for the next 48 hours!'");
+      streak = 14;
+      updateUi();
+    }
+
+    updateUi();
+  </script>
+</body>
+</html>
