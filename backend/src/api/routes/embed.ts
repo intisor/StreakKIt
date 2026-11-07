@@ -1156,8 +1156,15 @@ function renderEmbedHtml(
         : ''
     }
 
-    <button class="share-btn" id="shareBtn">
+    <button class="share-btn" id="shareBtn" style="margin-bottom: 10px;">
       Share Milestone 🚀
+    </button>
+    <button
+      class="share-btn"
+      style="background: #58cc02; color: #ffffff; box-shadow: 0 4px 0 #46a302;"
+      onclick="window.location.href='/v1/embed/path/${ruleSlug}/${externalUserId}?timezone=${encodeURIComponent(timezone)}&flag=%F0%9F%8E%A7&unitTitle=Conscious%20Listening'"
+    >
+      🗺️ Open Duolingo Path (❤️ Hearts & 💎 Gems)
     </button>
   </div>
 

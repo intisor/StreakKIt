@@ -203,4 +203,90 @@ describe('Hujjify Drop-In SDK Real-World Simulation', () => {
     );
     assert.equal(check.current_streak, 14);
   });
+
+  it('Step 9: Hujjify Duolingo-in-a-Box — Auditing 2 clean tracks awards +20 XP, completes Daily Goal (20/20 XP) & grants +10 bonus Gems', async () => {
+    // Track 1: Clean -> +10 XP
+    const xp1 = await server.inject({
+      method: 'POST',
+      url: '/v1/gamification/xp/add',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        userId: testUserId,
+        amount: 10,
+        unitId: 'unit_1',
+        timezone: 'Africa/Lagos'
+      }
+    });
+    assert.equal(xp1.statusCode, 200);
+    assert.equal(xp1.json().xp.today, 10);
+    assert.equal(xp1.json().xp.dailyGoalCompleted, false);
+
+    // Track 2: Clean -> +10 XP (20/20 XP -> daily goal completed + 10 bonus gems)
+    const xp2 = await server.inject({
+      method: 'POST',
+      url: '/v1/gamification/xp/add',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        userId: testUserId,
+        amount: 10,
+        unitId: 'unit_1',
+        timezone: 'Africa/Lagos'
+      }
+    });
+    assert.equal(xp2.statusCode, 200);
+    const body2 = xp2.json();
+    assert.equal(body2.xp.today, 20);
+    assert.equal(body2.xp.dailyGoalCompleted, true);
+    assert.equal(body2.bonusGemsAwarded, 10);
+    assert.equal(body2.gems.balance, 60); // 50 initial + 10 bonus
+    assert.equal(body2.curriculumProgress.unit_1, 2);
+  });
+
+  it('Step 10: Hujjify Duolingo-in-a-Box — Unskipped flagged song consumes 1 Heart (4/5 ❤️) and refills back to 5/5 using 50 Gems', async () => {
+    const consumeRes = await server.inject({
+      method: 'POST',
+      url: '/v1/gamification/hearts/consume',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        userId: testUserId,
+        count: 1,
+        timezone: 'Africa/Lagos'
+      }
+    });
+    assert.equal(consumeRes.statusCode, 200);
+    const consumed = consumeRes.json();
+    assert.equal(consumed.hearts.current, 4);
+    assert.equal(consumed.hearts.isFull, false);
+
+    // Refill hearts using 50 Gems
+    const refillRes = await server.inject({
+      method: 'POST',
+      url: '/v1/gamification/hearts/refill',
+      headers: { authorization: 'Bearer pk_live_hujjify_456' },
+      payload: {
+        userId: testUserId,
+        method: 'GEMS',
+        gemCost: 50,
+        timezone: 'Africa/Lagos'
+      }
+    });
+    assert.equal(refillRes.statusCode, 200);
+    const refilled = refillRes.json();
+    assert.equal(refilled.hearts.current, 5);
+    assert.equal(refilled.hearts.isFull, true);
+    assert.equal(refilled.gems.balance, 10); // 60 - 50 = 10 gems left
+  });
+
+  it('Step 11: Hujjify Duolingo-in-a-Box — Long-pressing Streak Card renders Hujjify Winding Path UI (🎧 Conscious Listening)', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/embed/path/hujjify_playback/${testUserId}?flag=%F0%9F%8E%A7&unitTitle=Conscious%20Listening&unitSubtitle=Audit%20clean%20tracks%20%26%20guard%20your%20ears`
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.headers['content-type'].includes('text/html'));
+    assert.ok(res.body.includes('Conscious Listening'));
+    assert.ok(res.body.includes('UNIT 1 · 2/4'));
+    assert.ok(res.body.includes('Daily goal · <span id="xpVal">20</span>/20 XP'));
+  });
 });
