@@ -176,6 +176,17 @@ await streakkit.ping('daily_workout');
 
 // Mount animated 60fps Lottie modal
 streakkit.showModal('daily_workout');
+
+// Code-driven animation customization (change color, behavior, speed in code!):
+streakkit.showModal('daily_workout', {
+  animation: {
+    primaryColor: '#22c55e',     // Emerald green (auto-recolors vector flame & theme)
+    speed: 1.5,                  // 1.5x playback & particle speed
+    preset: 'confetti',          // 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen'
+    particleCount: 80,           // 80 dynamic confetti ribbons/particles
+    loop: true
+  }
+});
 ```
 
 ---

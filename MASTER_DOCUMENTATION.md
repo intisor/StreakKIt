@@ -165,13 +165,45 @@ StreakKit.setUserPreferences(
 
 ---
 
-## 5. Visual Vector Animation Pipeline
+## 5. Visual Vector Animation Pipeline & Code-Driven Customization
 
-StreakKit embeds a hardware-accelerated `lottie-web` runtime into its universal embed view:
+StreakKit embeds a hardware-accelerated `lottie-web` runtime and a 60fps HTML5 Canvas physics engine into its universal embed view:
 
-1. **Pre-Bundled Flame:** Uses an optimized 17KB Duolingo-style burning flame vector animation by default.
-2. **Custom Developer Animations:** Custom Lottie JSON URLs can be supplied via the `?animationUrl=` query parameter.
-3. **Graceful Offline Fallback:** If offline or if the vector CDN is unreachable, a DOM event listener (`data_failed`) immediately reveals an inline CSS/SVG flame without breaking the UI.
+### 5.1 Programmatic Animation Customization (Zero Asset Creation)
+Developers can customize the animation's **color**, **behavior**, and **timing** directly in code without opening After Effects or creating custom Lottie files:
+
+```typescript
+streakkit.showModal('daily_lesson', {
+  animation: {
+    // 1. Color Customization (Auto-recolors SVG vector flame, glow, badges, and calendar cells)
+    primaryColor: '#22c55e',      // Emerald green (Duolingo), purple '#8b5cf6', pink '#ec4899'
+    secondaryColor: '#10b981',
+    glowColor: 'rgba(34, 197, 94, 0.7)',
+
+    // 2. Behavior Presets & Physics
+    preset: 'confetti',           // 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen'
+    particleCount: 75,            // Number of dynamic celebration particles
+    particleColors: ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899'],
+
+    // 3. Timing & Playback Controls
+    speed: 1.5,                   // Playback & particle speed multiplier (0.5x to 3.0x)
+    loop: true                    // Loop continuously or one-shot celebration
+  }
+});
+```
+
+### 5.2 Behavior Presets
+- **`flame` (Default):** Ascending fiery embers rising from the flame core with randomized wind flutter.
+- **`confetti`:** High-velocity explosion of tumbling rectangular ribbons and celebratory discs under gravity.
+- **`frost`:** Shimmering pale cyan & diamond white ice crystals drifting gently with horizontal sine-wave sway.
+- **`fireworks`:** 360-degree radial burst from the center with drag friction and trailing sparkles.
+- **`zen`:** Slow, ambient expanding light orbs in peaceful harmonic drift.
+
+### 5.3 Color Transformation Pipeline
+When `primaryColor` is set (e.g., `#22c55e`), StreakKit mathematically converts the hex code to HSL degrees and applies a deterministic `hue-rotate(...)` matrix filter to the vector flame. The entire flame transforms cleanly into your brand color while maintaining 100% vector sharpness, highlights, and contrast.
+
+### 5.4 Graceful Fallback
+If offline or if a custom vector CDN is unreachable, a DOM event listener (`data_failed`) immediately displays an inline CSS/SVG flame without breaking the UI.
 
 ---
 
