@@ -205,6 +205,10 @@ Base Headers: `Authorization: Bearer <PUBLIC_OR_SECRET_KEY>`, `Content-Type: app
 | **IAP Repair Pay**| `POST` | `/v1/streak/repair-verify` | `{"ruleSlug": "...", "externalUserId": "...", "paymentProof": {"provider": "google_play", "transactionId": "..."}}` |
 | **Month Calendar**| `GET`  | `/v1/streaks/:ruleSlug/:externalUserId/calendar?year=2026&month=11` | *None (returns MonthCalendarDTO)* |
 | **Lottie Embed**  | `GET`  | `/v1/embed/:ruleSlug/:externalUserId` | *None (renders HTML with interactive Month Calendar, Web Audio synthesizer & IAP paywall)* |
+| **Amnesty Eval**  | `POST` | `/v1/streak/amnesty/evaluate` | `{"ruleSlug": "...", "externalUserId": "...", "minDormantDays": 7}` |
+| **Amnesty Claim** | `POST` | `/v1/streak/amnesty/claim` | `{"ruleSlug": "...", "externalUserId": "..."}` |
+| **Contrast Nudge**| `POST` | `/v1/notifications/contrast` | `{"userId": "...", "neglectedRuleSlug": "...", "triggerActivity": {"action": "...", "label": "...", "durationMinutes": 45}}` |
+| **Push Token Reg**| `POST` | `/v1/users/push-token` | `{"externalUserId": "...", "pushToken": "...", "platform": "FCM"}` |
 
 ---
 
@@ -239,7 +243,47 @@ Who fulfills calendar, date UIs? **StreakKit fulfills it out of the box.**
 
 ---
 
-## 6. Machine JSON Output Format (`POST /v1/ping`)
+## 7. Platform 2: Flutter (1-File Drop-In: `packages/sdk-flutter/lib/streakkit.dart`)
+```dart
+import 'package:flutter/material.dart';
+import 'package:streakkit/streakkit.dart';
+
+// 1. Initialize
+StreakKit.init(key: "pk_live_your_key", userId: "user_123");
+
+// 2. Ping on action
+await StreakKit.ping("daily_lesson");
+
+// 3. Listen for Milestone Rewards
+StreakKit.onMilestoneReached((ruleSlug, day) {
+  print("Unlocked Day $day Milestone Reward!");
+});
+```
+
+---
+
+## 8. Platform 3: React Native / Expo (1-File Drop-In: `packages/sdk-react-native/src/useStreakKit.ts`)
+```tsx
+import { StreakKit, useStreak } from './useStreakKit';
+
+// 1. Initialize
+StreakKit.init({ publicKey: "pk_live_your_key", userId: "user_123" });
+
+// 2. Use hook in any component
+export function StreakCard() {
+  const { currentStreak, isActiveToday, ping, embedUrl } = useStreak("daily_lesson");
+
+  return (
+    <TouchableOpacity onPress={() => ping()}>
+      <Text>🔥 {currentStreak} Days {isActiveToday ? "(Completed)" : "(Pending)"}</Text>
+    </TouchableOpacity>
+  );
+}
+```
+
+---
+
+## 9. Machine JSON Output Format (`POST /v1/ping`)
 ```json
 {
   "ruleSlug": "daily_task",
