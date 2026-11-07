@@ -738,4 +738,135 @@ object StreakKit {
             }
         })
     }
+
+    /**
+     * Opens the full Duolingo-in-a-Box Winding Path UI (Top Bar with Flag + Streak + Gems + Hearts,
+     * Daily XP Goal Bar, Unit Banner, and Winding S-Curve Lesson Nodes) in a native BottomSheetDialog.
+     */
+    fun showDuolingoPath(
+        activity: Activity,
+        ruleSlug: String,
+        userId: String = "user_default",
+        flag: String = "🇳🇬",
+        unitTitle: String = "Greetings",
+        unitSubtitle: String = "Say hello and introduce yourself"
+    ) {
+        activity.runOnUiThread {
+            val dialog = BottomSheetDialog(activity)
+            val webView = WebView(activity).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    (activity.resources.displayMetrics.heightPixels * 0.92).toInt()
+                )
+                setBackgroundColor(Color.parseColor("#131f24"))
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                val tz = URLEncoder.encode(TimeZone.getDefault().id, "UTF-8")
+                val f = URLEncoder.encode(flag, "UTF-8")
+                val ut = URLEncoder.encode(unitTitle, "UTF-8")
+                val us = URLEncoder.encode(unitSubtitle, "UTF-8")
+                loadUrl("${endpoint.trimEnd('/')}/v1/embed/path/$ruleSlug/$userId?timezone=$tz&flag=$f&unitTitle=$ut&unitSubtitle=$us")
+            }
+            dialog.setContentView(webView)
+            dialog.show()
+        }
+    }
+
+    /**
+     * Deducts a heart when a user answers a quiz/lesson question wrong.
+     */
+    fun consumeHeart(
+        userId: String = "user_default",
+        count: Int = 1,
+        onResult: ((heartsRemaining: Int, outOfHearts: Boolean) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("count", count)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/hearts/consume")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val heartsObj = json.optJSONObject("hearts")
+                val current = heartsObj?.optInt("current", 5) ?: 5
+                val out = heartsObj?.optBoolean("outOfHearts", false) ?: false
+                mainHandler.post { onResult?.invoke(current, out) }
+            }
+        })
+    }
+
+    /**
+     * Refills user hearts via GEMS (default 50 gems), PRACTICE (+1 heart), or AD (+1 heart).
+     */
+    fun refillHearts(
+        userId: String = "user_default",
+        method: String = "GEMS",
+        onResult: ((heartsCurrent: Int, gemsBalance: Int) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("method", method)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/hearts/refill")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val current = json.optJSONObject("hearts")?.optInt("current", 5) ?: 5
+                val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
+                mainHandler.post { onResult?.invoke(current, gems) }
+            }
+        })
+    }
+
+    /**
+     * Awards XP toward the daily goal (e.g., +10 XP for completing a lesson).
+     */
+    fun addXp(
+        userId: String = "user_default",
+        amount: Int = 10,
+        unitId: String? = null,
+        onResult: ((xpToday: Int, dailyGoalCompleted: Boolean, gemsBalance: Int) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("amount", amount)
+            if (unitId != null) put("unitId", unitId)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/xp/add")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val xpObj = json.optJSONObject("xp")
+                val xpToday = xpObj?.optInt("today", 0) ?: 0
+                val goalDone = xpObj?.optBoolean("dailyGoalCompleted", false) ?: false
+                val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
+                mainHandler.post { onResult?.invoke(xpToday, goalDone, gems) }
+            }
+        })
+    }
 }

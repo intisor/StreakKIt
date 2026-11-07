@@ -11,6 +11,7 @@ import {
   StreakPauseEntry
 } from '../../domain/calendar.js';
 import { getFlameEvolutionTier } from '../../domain/features.js';
+import { GamificationService, GamificationStatusDTO } from '../../domain/gamification.js';
 
 export interface StreakAnimationConfig {
   preset?: 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen';
@@ -342,6 +343,143 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
       );
 
       return reply.status(200).send(calendar);
+    }
+  );
+
+  // 3. Universal Duolingo-in-a-Box Winding Path UI
+  fastify.get(
+    '/v1/embed/path/:ruleSlug/:externalUserId',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { ruleSlug, externalUserId } = request.params as {
+        ruleSlug: string;
+        externalUserId: string;
+      };
+      const query = request.query as {
+        timezone?: string;
+        flag?: string;
+        unitTitle?: string;
+        unitSubtitle?: string;
+        totalLessons?: string;
+      };
+
+      const db = getDb();
+      const nowUtc = new Date();
+      const userTimezone = query.timezone || 'UTC';
+
+      const ruleRow = await db.get<any>(
+        'SELECT * FROM streak_rules WHERE slug = $1',
+        [ruleSlug]
+      );
+
+      if (!ruleRow) {
+        return reply.status(404).type('text/html').send(`
+          <!DOCTYPE html>
+          <html>
+            <body style="background:#131f24;color:#f8fafc;font-family:sans-serif;text-align:center;padding:40px;">
+              <h2>Rule not found</h2>
+              <p style="color:#94a3b8;">Streak rule "${ruleSlug}" does not exist.</p>
+            </body>
+          </html>
+        `);
+      }
+
+      const tenantRow = await db.get<any>(
+        'SELECT public_key FROM tenants WHERE id = $1',
+        [ruleRow.tenant_id]
+      );
+      const publicKey = tenantRow?.public_key || '';
+
+      const rule: StreakRule = {
+        id: ruleRow.id,
+        tenantId: ruleRow.tenant_id,
+        slug: ruleRow.slug,
+        name: ruleRow.name,
+        cadenceType: ruleRow.cadence_type,
+        targetValue: ruleRow.target_value,
+        exemptDaysBitmask: ruleRow.exempt_days_bitmask,
+        gracePeriodMinutes: ruleRow.grace_period_minutes,
+        maxFreezes: ruleRow.max_freezes,
+        autoConsumeFreeze: Boolean(ruleRow.auto_consume_freeze),
+        atRiskLeadMinutes: ruleRow.at_risk_lead_minutes || 120,
+        milestoneDays: typeof ruleRow.milestone_days === 'string'
+          ? JSON.parse(ruleRow.milestone_days)
+          : ruleRow.milestone_days,
+        createdAt: ruleRow.created_at
+      };
+
+      const userStreakRow = await db.get<any>(
+        'SELECT * FROM user_streaks WHERE rule_id = $1 AND external_user_id = $2',
+        [rule.id, externalUserId]
+      );
+
+      const userStreak: UserStreak = userStreakRow
+        ? {
+            id: userStreakRow.id,
+            tenantId: userStreakRow.tenant_id,
+            ruleId: userStreakRow.rule_id,
+            externalUserId: userStreakRow.external_user_id,
+            timezone: userTimezone,
+            currentStreak: userStreakRow.current_streak,
+            highestStreak: userStreakRow.highest_streak,
+            lastCompletedLogicalDate: userStreakRow.last_completed_logical_date,
+            currentLogicalDate: userStreakRow.current_logical_date,
+            currentWindowProgress: userStreakRow.current_window_progress,
+            freezesAvailable: userStreakRow.freezes_available,
+            lastFreezeConsumedDate: userStreakRow.last_freeze_consumed_date,
+            windowExpiresAtUtc: userStreakRow.window_expires_at_utc,
+            atRiskNotifiedForDate: userStreakRow.at_risk_notified_for_date,
+            recentHistory: typeof userStreakRow.recent_history === 'string'
+              ? JSON.parse(userStreakRow.recent_history)
+              : userStreakRow.recent_history || [],
+            lastClientEventUtc: userStreakRow.last_client_event_utc,
+            lastEventHash: userStreakRow.last_event_hash,
+            updatedAt: userStreakRow.updated_at
+          }
+        : {
+            id: 'temp_user',
+            tenantId: rule.tenantId,
+            ruleId: rule.id,
+            externalUserId,
+            timezone: userTimezone,
+            currentStreak: 0,
+            highestStreak: 0,
+            lastCompletedLogicalDate: null,
+            currentLogicalDate: null,
+            currentWindowProgress: 0,
+            freezesAvailable: rule.maxFreezes,
+            lastFreezeConsumedDate: null,
+            windowExpiresAtUtc: null,
+            atRiskNotifiedForDate: null,
+            recentHistory: [],
+            lastClientEventUtc: null,
+            lastEventHash: null,
+            updatedAt: nowUtc.toISOString()
+          };
+
+      const streakState = evaluateStateOnRead(userStreak, rule, nowUtc);
+      const gamificationService = new GamificationService(db);
+      const gamification = await gamificationService.getStatus(
+        rule.tenantId,
+        externalUserId,
+        userTimezone,
+        nowUtc.getTime()
+      );
+
+      const pathHtml = renderDuolingoPathHtml({
+        ruleSlug: rule.slug,
+        ruleName: rule.name,
+        externalUserId,
+        timezone: userTimezone,
+        publicKey,
+        streakCount: streakState.currentStreak,
+        gamification,
+        flagEmoji: query.flag || '🇳🇬',
+        unitTitle: query.unitTitle || 'Greetings',
+        unitSubtitle: query.unitSubtitle || 'Say hello and introduce yourself',
+        totalLessons: query.totalLessons ? parseInt(query.totalLessons, 10) : 4
+      });
+
+      return reply.type('text/html').send(pathHtml);
     }
   );
 }
@@ -1484,6 +1622,498 @@ function renderEmbedHtml(
             setTimeout(function() { shareBtnEl.textContent = orig; }, 2000);
           });
         }
+      });
+    }
+  </script>
+</body>
+</html>`;
+}
+
+function renderDuolingoPathHtml(params: {
+  ruleSlug: string;
+  ruleName: string;
+  externalUserId: string;
+  timezone: string;
+  publicKey: string;
+  streakCount: number;
+  gamification: GamificationStatusDTO;
+  flagEmoji: string;
+  unitTitle: string;
+  unitSubtitle: string;
+  totalLessons: number;
+}): string {
+  const {
+    ruleSlug,
+    externalUserId,
+    timezone,
+    publicKey,
+    streakCount,
+    gamification,
+    flagEmoji,
+    unitTitle,
+    unitSubtitle,
+    totalLessons
+  } = params;
+
+  const unitCompleted = Math.min(
+    totalLessons,
+    gamification.curriculumProgress['unit_1'] || 0
+  );
+  const xpPct = Math.min(
+    100,
+    Math.round((gamification.xp.today / Math.max(1, gamification.xp.targetDaily)) * 100)
+  );
+
+  // Build winding path nodes
+  const offsets = [0, -48, -24, 36, 0];
+  let nodesHtml = '';
+  for (let i = 0; i < totalLessons; i++) {
+    const offset = offsets[i % offsets.length];
+    const isCompleted = i < unitCompleted;
+    const isCurrent = i === unitCompleted;
+    const nodeClass = isCompleted ? 'node-btn completed' : isCurrent ? 'node-btn active' : 'node-btn locked';
+    const icon = isCompleted ? '✓' : isCurrent ? '★' : '🔒';
+
+    nodesHtml += `
+      <div class="path-node-row" style="transform: translateX(${offset}px);">
+        ${
+          isCurrent
+            ? `
+          <div class="avatar-illustration" title="Tap to start lesson">
+            <span style="font-size:38px;">👩🏽‍🏫</span>
+          </div>
+          <div class="start-pill" onclick="openLessonModal(${i + 1})">START</div>
+          <div class="node-ring">
+            <button class="${nodeClass}" onclick="openLessonModal(${i + 1})">${icon}</button>
+          </div>
+        `
+            : `
+          <button class="${nodeClass}" onclick="${isCompleted ? `openLessonModal(${i + 1})` : 'shakeLocked(this)'}">${icon}</button>
+        `
+        }
+      </div>
+    `;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>StreakKit Duolingo Path — ${unitTitle}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #131f24;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 16px 60px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+    /* Top Status Bar: Flag, Streak, Gems, Hearts, Settings */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 4px 14px 4px;
+    }
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 12px;
+      transition: background 0.15s;
+    }
+    .stat-item:hover { background: rgba(255,255,255,0.06); }
+    .flag-pill { font-size: 24px; }
+    .streak-pill { color: ${streakCount > 0 ? '#ff9600' : '#778899'}; }
+    .gems-pill { color: #1cb0f6; }
+    .hearts-pill { color: #ff4b4b; }
+    .settings-pill { color: #778899; font-size: 20px; }
+
+    /* Daily Goal XP Progress Card */
+    .daily-goal-card {
+      border: 2px solid #37464f;
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      background: #131f24;
+    }
+    .goal-flag {
+      font-size: 24px;
+      color: #ff9600;
+    }
+    .goal-body { flex: 1; }
+    .goal-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #f1f5f9;
+    }
+    .goal-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: #37464f;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .goal-bar-fill {
+      height: 100%;
+      width: ${xpPct}%;
+      background: linear-gradient(90deg, #58cc02, #89e219);
+      border-radius: 999px;
+      transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Unit Banner Card */
+    .unit-banner {
+      background: #58cc02;
+      border-bottom: 4px solid #46a302;
+      border-radius: 18px;
+      padding: 18px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .unit-meta {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: rgba(255, 255, 255, 0.88);
+      margin-bottom: 4px;
+    }
+    .unit-title {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+    .unit-sub {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 500;
+    }
+    .unit-guide-btn {
+      width: 48px;
+      height: 48px;
+      border: 2px solid rgba(255,255,255,0.45);
+      border-bottom-width: 4px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.1);
+      color: #ffffff;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Winding S-Curve Lesson Nodes */
+    .winding-path {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding-top: 6px;
+    }
+    .path-node-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .avatar-illustration {
+      width: 88px;
+      height: 88px;
+      background: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    .start-pill {
+      background: #1f2d35;
+      border: 2px solid #37464f;
+      color: #58cc02;
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 1px;
+      padding: 8px 20px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      animation: bounce 1.8s infinite ease-in-out;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .node-ring {
+      padding: 8px;
+      border: 4px solid #58cc02;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .node-btn {
+      width: 72px;
+      height: 68px;
+      border-radius: 50%;
+      border: none;
+      font-size: 28px;
+      font-weight: 900;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+    }
+    .node-btn:active { transform: translateY(4px); }
+    .node-btn.active, .node-btn.completed {
+      background: #58cc02;
+      box-shadow: 0 6px 0 #46a302;
+    }
+    .node-btn.locked {
+      background: #37464f;
+      color: #778899;
+      box-shadow: 0 6px 0 #28343b;
+    }
+
+    /* Modals (Lesson Practice & Out of Hearts) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: 100%;
+      max-width: 380px;
+      background: #1f2d35;
+      border: 2px solid #37464f;
+      border-radius: 20px;
+      padding: 22px;
+      text-align: center;
+    }
+    .modal-title { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+    .modal-desc { font-size: 14px; color: #94a3b8; margin-bottom: 18px; line-height: 1.45; }
+    .duo-btn {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .duo-btn-green { background: #58cc02; color: #fff; box-shadow: 0 4px 0 #46a302; }
+    .duo-btn-blue { background: #1cb0f6; color: #fff; box-shadow: 0 4px 0 #1899d6; }
+    .duo-btn-red { background: #ff4b4b; color: #fff; box-shadow: 0 4px 0 #ea2b2b; }
+    .duo-btn-ghost { background: transparent; color: #94a3b8; border: 2px solid #37464f; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Top Status Bar -->
+    <div class="top-bar">
+      <div class="stat-item flag-pill" title="Course Language">${flagEmoji}</div>
+      <div class="stat-item streak-pill" onclick="window.location.href='/v1/embed/${ruleSlug}/${externalUserId}?timezone=${encodeURIComponent(timezone)}'" title="Open Streak Flame Modal">
+        🔥 <span id="streakVal">${streakCount}</span>
+      </div>
+      <div class="stat-item gems-pill" onclick="openHeartsModal()" title="Gems Balance">
+        💎 <span id="gemsVal">${gamification.gems.balance}</span>
+      </div>
+      <div class="stat-item hearts-pill" onclick="openHeartsModal()" title="Hearts / Lives">
+        ❤️ <span id="heartsVal">${gamification.hearts.current}</span>
+      </div>
+      <div class="stat-item settings-pill" onclick="window.location.href='/v1/embed/${ruleSlug}/${externalUserId}?timezone=${encodeURIComponent(timezone)}'">⚙️</div>
+    </div>
+
+    <!-- Daily Goal Progress Card -->
+    <div class="daily-goal-card">
+      <div class="goal-flag">🚩</div>
+      <div class="goal-body">
+        <div class="goal-title">Daily goal · <span id="xpVal">${gamification.xp.today}</span>/${gamification.xp.targetDaily} XP</div>
+        <div class="goal-bar-bg">
+          <div class="goal-bar-fill" id="xpBarFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unit 1 Header Banner -->
+    <div class="unit-banner">
+      <div>
+        <div class="unit-meta" id="unitProgressMeta">UNIT 1 · ${unitCompleted}/${totalLessons}</div>
+        <div class="unit-title">${unitTitle}</div>
+        <div class="unit-sub">${unitSubtitle}</div>
+      </div>
+      <button class="unit-guide-btn" title="Unit Guidebook" onclick="openLessonModal(1)">📖</button>
+    </div>
+
+    <!-- Winding Lesson Nodes -->
+    <div class="winding-path" id="windingPath">
+      ${nodesHtml}
+    </div>
+  </div>
+
+  <!-- Interactive Lesson / Quiz Modal -->
+  <div class="modal-backdrop" id="lessonModal">
+    <div class="modal-card">
+      <div class="modal-title" id="lessonModalTitle">Lesson 1 · ${unitTitle}</div>
+      <div class="modal-desc">Complete this lesson to earn <b>+10 XP</b> toward your daily goal, or test losing a ❤️ Heart on a wrong answer.</div>
+      <button class="duo-btn duo-btn-green" onclick="completeLesson()">✓ Complete Lesson (+10 XP)</button>
+      <button class="duo-btn duo-btn-red" onclick="makeMistake()">✗ Wrong Answer (-1 ❤️ Heart)</button>
+      <button class="duo-btn duo-btn-ghost" onclick="closeModals()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Hearts & Gems Refill Modal -->
+  <div class="modal-backdrop" id="heartsModal">
+    <div class="modal-card">
+      <div style="font-size:44px;margin-bottom:6px;">❤️ <span id="modalHeartsCount">${gamification.hearts.current}</span>/${gamification.hearts.max}</div>
+      <div class="modal-title" id="heartsModalTitle">${gamification.hearts.outOfHearts ? 'You ran out of hearts!' : 'Hearts keep you in the lesson'}</div>
+      <div class="modal-desc">Each mistake costs 1 heart. Refill instantly with Gems or practice a quick review to earn +1 heart.</div>
+      <button class="duo-btn duo-btn-blue" onclick="refillHearts('GEMS')">💎 Refill Full Hearts (50 Gems)</button>
+      <button class="duo-btn duo-btn-green" onclick="refillHearts('PRACTICE')">🏋️ Practice to Earn +1 ❤️</button>
+      <button class="duo-btn duo-btn-ghost" onclick="closeModals()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    var PUBLIC_KEY = ${JSON.stringify(publicKey)};
+    var USER_ID = ${JSON.stringify(externalUserId)};
+    var RULE_SLUG = ${JSON.stringify(ruleSlug)};
+    var TIMEZONE = ${JSON.stringify(timezone)};
+
+    function openLessonModal(lessonNum) {
+      var hearts = parseInt(document.getElementById('heartsVal').textContent || '0', 10);
+      if (hearts <= 0) {
+        openHeartsModal();
+        return;
+      }
+      document.getElementById('lessonModalTitle').textContent = 'Lesson ' + lessonNum + ' · ' + ${JSON.stringify(unitTitle)};
+      document.getElementById('lessonModal').classList.add('open');
+    }
+
+    function openHeartsModal() {
+      document.getElementById('heartsModal').classList.add('open');
+    }
+
+    function closeModals() {
+      document.getElementById('lessonModal').classList.remove('open');
+      document.getElementById('heartsModal').classList.remove('open');
+    }
+
+    function shakeLocked(btn) {
+      btn.style.transform = 'translateX(-5px)';
+      setTimeout(function() { btn.style.transform = 'translateX(5px)'; }, 80);
+      setTimeout(function() { btn.style.transform = 'translateX(0)'; }, 160);
+    }
+
+    function syncUi(state) {
+      if (!state) return;
+      document.getElementById('heartsVal').textContent = state.hearts.current;
+      document.getElementById('modalHeartsCount').textContent = state.hearts.current;
+      document.getElementById('gemsVal').textContent = state.gems.balance;
+      document.getElementById('xpVal').textContent = state.xp.today;
+      var pct = Math.min(100, Math.round((state.xp.today / Math.max(1, state.xp.targetDaily)) * 100));
+      document.getElementById('xpBarFill').style.width = pct + '%';
+    }
+
+    function completeLesson() {
+      fetch('/v1/gamification/xp/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + PUBLIC_KEY
+        },
+        body: JSON.stringify({
+          userId: USER_ID,
+          amount: 10,
+          unitId: 'unit_1',
+          timezone: TIMEZONE
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(state) {
+        syncUi(state);
+        closeModals();
+        window.location.reload();
+      });
+    }
+
+    function makeMistake() {
+      fetch('/v1/gamification/hearts/consume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + PUBLIC_KEY
+        },
+        body: JSON.stringify({
+          userId: USER_ID,
+          count: 1,
+          timezone: TIMEZONE
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(state) {
+        syncUi(state);
+        if (state.hearts && state.hearts.outOfHearts) {
+          closeModals();
+          openHeartsModal();
+        }
+      });
+    }
+
+    function refillHearts(method) {
+      fetch('/v1/gamification/hearts/refill', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + PUBLIC_KEY
+        },
+        body: JSON.stringify({
+          userId: USER_ID,
+          method: method,
+          timezone: TIMEZONE
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(state) {
+        if (state.error) {
+          alert(state.error);
+          return;
+        }
+        syncUi(state);
+        closeModals();
       });
     }
   </script>

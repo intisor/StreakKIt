@@ -212,6 +212,24 @@ class SqliteAdapter implements DbAdapter {
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(tenant_id, external_user_id, push_token)
       );
+
+      CREATE TABLE IF NOT EXISTS user_gamification (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        external_user_id TEXT NOT NULL,
+        hearts_current INTEGER NOT NULL DEFAULT 5,
+        hearts_max INTEGER NOT NULL DEFAULT 5,
+        hearts_refill_interval_minutes INTEGER NOT NULL DEFAULT 240,
+        last_heart_consumed_at TEXT,
+        gems_balance INTEGER NOT NULL DEFAULT 50,
+        xp_today INTEGER NOT NULL DEFAULT 0,
+        xp_target_daily INTEGER NOT NULL DEFAULT 20,
+        xp_total INTEGER NOT NULL DEFAULT 0,
+        last_xp_logical_date TEXT,
+        curriculum_progress TEXT NOT NULL DEFAULT '{}',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(tenant_id, external_user_id)
+      );
     `);
 
     // Safely apply alterations for existing database instances

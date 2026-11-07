@@ -188,4 +188,66 @@ class StreakKit {
     final uid = userId ?? currentUserId;
     return "${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/embed/$ruleSlug/$uid";
   }
+
+  /// Returns embed URL to display the full Duolingo Winding Path UI (Top Bar + Daily XP + Unit Nodes).
+  static String getDuolingoPathUrl(
+    String ruleSlug, {
+    String? userId,
+    String flag = "🇳🇬",
+    String unitTitle = "Greetings",
+  }) {
+    final uid = userId ?? currentUserId;
+    final f = Uri.encodeComponent(flag);
+    final ut = Uri.encodeComponent(unitTitle);
+    return "${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/embed/path/$ruleSlug/$uid?flag=$f&unitTitle=$ut";
+  }
+
+  /// Deducts a heart when a user makes a mistake in a lesson/quiz.
+  static Future<Map<String, dynamic>?> consumeHeart({int count = 1, String? userId}) async {
+    final uid = userId ?? currentUserId;
+    final url = Uri.parse("${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/gamification/hearts/consume");
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Authorization": "Bearer $publicKey", "Content-Type": "application/json"},
+        body: jsonEncode({"userId": uid, "count": count}),
+      );
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  /// Refills hearts via GEMS (50 gems), PRACTICE (+1 heart), or AD (+1 heart).
+  static Future<Map<String, dynamic>?> refillHearts({String method = "GEMS", String? userId}) async {
+    final uid = userId ?? currentUserId;
+    final url = Uri.parse("${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/gamification/hearts/refill");
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Authorization": "Bearer $publicKey", "Content-Type": "application/json"},
+        body: jsonEncode({"userId": uid, "method": method}),
+      );
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
+
+  /// Awards XP toward the daily goal (e.g. +10 XP for completing a lesson).
+  static Future<Map<String, dynamic>?> addXp(int amount, {String? unitId, String? userId}) async {
+    final uid = userId ?? currentUserId;
+    final url = Uri.parse("${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/gamification/xp/add");
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Authorization": "Bearer $publicKey", "Content-Type": "application/json"},
+        body: jsonEncode({
+          "userId": uid,
+          "amount": amount,
+          if (unitId != null) "unitId": unitId,
+        }),
+      );
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
 }

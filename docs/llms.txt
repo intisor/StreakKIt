@@ -283,7 +283,29 @@ export function StreakCard() {
 
 ---
 
-## 9. Machine JSON Output Format (`POST /v1/ping`)
+## 9. Duolingo-in-a-Box Drop-In Engine (Hearts ❤️, Gems 💎, Daily XP 🚩 & Winding Path UI)
+
+Why rebuild Duolingo's gamification state machine and winding path UI from scratch? StreakKit ships the entire **Duolingo-in-a-Box** experience out of the box:
+
+1. **Universal Winding Path WebView (`/v1/embed/path/:ruleSlug/:externalUserId?flag=🇳🇬&unitTitle=Greetings`):**
+   - Renders the complete Duolingo home screen:
+     - **Top Bar:** Course Flag (`🇳🇬`), Streak Count (`🔥`), Gems Balance (`💎 50`), Hearts Count (`❤️ 5`), and Settings (`⚙️`).
+     - **Daily Goal Bar:** `🚩 Daily goal · 0/20 XP` with animated progress fill.
+     - **Unit Header Banner:** `UNIT 1 · 0/4 — Greetings (Say hello and introduce yourself)` with guidebook button.
+     - **Winding S-Curve Lesson Nodes:** Character illustration avatar, pulsing `START` badge, active 3D green star button (`★`), locked nodes (`🔒`), and interactive **Out of Hearts** refill modal.
+   - **Android Drop-In:** `StreakKit.showDuolingoPath(this, "daily_lesson", flag = "🇳🇬", unitTitle = "Greetings")`
+   - **Flutter Drop-In:** `StreakKit.getDuolingoPathUrl("daily_lesson", flag: "🇳🇬", unitTitle: "Greetings")`
+   - **React Native Drop-In:** `StreakKit.getDuolingoPathUrl("daily_lesson", userId, "🇳🇬", "Greetings")`
+
+2. **Hearts, Gems & Daily XP REST API:**
+   - `GET /v1/gamification/:externalUserId` — Returns `{ hearts: { current: 5, max: 5, secondsUntilNextRefill, outOfHearts }, gems: { balance: 50 }, xp: { today: 0, targetDaily: 20, dailyGoalCompleted: false } }`.
+   - `POST /v1/gamification/hearts/consume` — Deducts 1 heart on a wrong quiz answer (`StreakKit.consumeHeart()`). Automatically calculates 4-hour background heart refills.
+   - `POST /v1/gamification/hearts/refill` — Refills hearts via `GEMS` (50 gems for full refill), `PRACTICE` (+1 heart), or `AD` (+1 heart) (`StreakKit.refillHearts("GEMS")`).
+   - `POST /v1/gamification/xp/add` — Adds XP (`StreakKit.addXp(10, unitId = "unit_1")`), auto-resets daily XP at local midnight, and awards `+10` bonus gems when crossing the `20 XP` daily goal.
+
+---
+
+## 10. Machine JSON Output Format (`POST /v1/ping`)
 ```json
 {
   "ruleSlug": "daily_task",

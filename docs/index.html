@@ -235,9 +235,9 @@
       <div class="grid-3">
         
         <div class="feature-card">
-          <div class="card-icon">⚡</div>
-          <div class="card-title">Zero Web Dashboard</div>
-          <div class="card-desc">No external dashboards, manual metric mapping, or synced web consoles. All daily targets, rest days, and auto-freeze rules are declared in code.</div>
+          <div class="card-icon">❤️</div>
+          <div class="card-title">Duolingo-in-a-Box (Hearts, Gems & Path)</div>
+          <div class="card-desc">Full 5/5 ❤️ Hearts with 4-hour background auto-refills, 💎 Gems ledger, <code>0/20 XP</code> Daily Goal bar, and the drop-in S-curve Winding Path UI.</div>
         </div>
 
         <div class="feature-card">
@@ -265,9 +265,9 @@
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">🔊</div>
-          <div class="card-title">Procedural Web Audio Synthesizer</div>
-          <div class="card-desc">Zero external audio asset downloads. Synthesizes triumphant ascending chords and frost shimmers in real-time via the Web Audio API.</div>
+          <div class="card-icon">⚡</div>
+          <div class="card-title">Zero Web Dashboard</div>
+          <div class="card-desc">No external dashboards, manual metric mapping, or synced web consoles. All daily targets, rest days, and auto-freeze rules are declared in code.</div>
         </div>
 
       </div>
@@ -294,11 +294,13 @@ StreakKit.init(
     )
 )
 
-// 2. Ping on completion:
+// 2. Ping streak & award +10 Daily XP on lesson completion:
 StreakKit.ping(this, "daily_lesson", currentUserId)
+StreakKit.addXp(currentUserId, amount = 10, unitId = "unit_1")
 
-// 3. Show Duolingo-grade 60fps modal embed:
-StreakKit.showModal(this, "daily_lesson", currentUserId)</code></pre>
+// 3. Deduct ❤️ Heart on wrong quiz answer (or open Duolingo Winding Path UI):
+StreakKit.consumeHeart(currentUserId)
+StreakKit.showDuolingoPath(this, "daily_lesson", currentUserId, flag = "🇳🇬", unitTitle = "Greetings")</code></pre>
       </div>
 
       <!-- Flutter -->

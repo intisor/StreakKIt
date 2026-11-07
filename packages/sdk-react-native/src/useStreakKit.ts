@@ -122,6 +122,64 @@ class StreakKitClient {
     const uid = userId || this.userId;
     return `${this.endpoint}/v1/embed/${ruleSlug}/${uid}`;
   }
+
+  getDuolingoPathUrl(
+    ruleSlug: string,
+    userId?: string,
+    flag: string = '🇳🇬',
+    unitTitle: string = 'Greetings'
+  ): string {
+    const uid = userId || this.userId;
+    return `${this.endpoint}/v1/embed/path/${ruleSlug}/${uid}?flag=${encodeURIComponent(flag)}&unitTitle=${encodeURIComponent(unitTitle)}`;
+  }
+
+  async consumeHeart(count: number = 1, userId?: string): Promise<any> {
+    const uid = userId || this.userId;
+    try {
+      const res = await fetch(`${this.endpoint}/v1/gamification/hearts/consume`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.publicKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: uid, count }),
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+    return null;
+  }
+
+  async refillHearts(method: 'GEMS' | 'PRACTICE' | 'AD' = 'GEMS', userId?: string): Promise<any> {
+    const uid = userId || this.userId;
+    try {
+      const res = await fetch(`${this.endpoint}/v1/gamification/hearts/refill`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.publicKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: uid, method }),
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+    return null;
+  }
+
+  async addXp(amount: number = 10, unitId?: string, userId?: string): Promise<any> {
+    const uid = userId || this.userId;
+    try {
+      const res = await fetch(`${this.endpoint}/v1/gamification/xp/add`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.publicKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: uid, amount, unitId }),
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+    return null;
+  }
 }
 
 export const StreakKit = new StreakKitClient();

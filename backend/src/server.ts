@@ -11,6 +11,7 @@ import { registerRuleRoutes } from './api/routes/rules.js';
 import { registerMoatRoutes } from './api/routes/moats.js';
 import { registerDashboardRoutes } from './api/routes/dashboard.js';
 import { registerNotificationRoutes } from './api/routes/notifications.js';
+import { registerGamificationRoutes } from './api/routes/gamification.js';
 import { WebhookDispatcherWorker } from './workers/webhook-dispatcher.js';
 
 export async function buildServer() {
@@ -37,6 +38,7 @@ export async function buildServer() {
   await registerMoatRoutes(fastify);
   await registerDashboardRoutes(fastify);
   await registerNotificationRoutes(fastify);
+  await registerGamificationRoutes(fastify);
 
   return fastify;
 }
