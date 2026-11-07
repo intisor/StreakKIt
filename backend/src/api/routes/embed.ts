@@ -12,6 +12,36 @@ import {
   StreakPauseEntry
 } from '../../domain/calendar.js';
 
+export interface StreakAnimationConfig {
+  preset?: 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen';
+  primaryColor?: string;     // Hex e.g. '#22c55e', '#8b5cf6', '#ec4899'
+  secondaryColor?: string;   // Hex e.g. '#10b981'
+  glowColor?: string;        // CSS color e.g. 'rgba(34, 197, 94, 0.7)'
+  speed?: number;            // 0.5 to 3.0 playback & particle speed
+  particleCount?: number;    // Number of active particles (e.g. 20 - 150)
+  particleColors?: string[]; // Array of hex colors for particles
+  behavior?: 'ember' | 'confetti' | 'fountain' | 'float';
+  durationMs?: number;       // Duration for celebration in ms
+  loop?: boolean;            // Whether animation loops or plays once
+  customUrl?: string;        // Optional custom Lottie JSON URL
+}
+
+function hexToHue(hex: string): number {
+  let c = hex.replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  if (c.length !== 6) return 38; // Default amber
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  if (max === min) h = 0;
+  else if (max === r) h = (60 * ((g - b) / (max - min)) + 360) % 360;
+  else if (max === g) h = (60 * ((b - r) / (max - min)) + 120) % 360;
+  else if (max === b) h = (60 * ((r - g) / (max - min)) + 240) % 360;
+  return Math.round(h);
+}
+
 export async function registerEmbedRoutes(fastify: FastifyInstance) {
   // 1. Full HTML Dopamine Embed UI
   fastify.get(
@@ -21,11 +51,32 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         ruleSlug: string;
         externalUserId: string;
       };
-      const query = request.query as { timezone?: string; animationUrl?: string };
+      const query = request.query as {
+        timezone?: string;
+        animationUrl?: string;
+        animConfig?: string;
+        primaryColor?: string;
+        speed?: string;
+        preset?: string;
+      };
 
       const db = getDb();
       const nowUtc = new Date();
       const userTimezone = query.timezone || 'UTC';
+
+      // Parse code-driven animation configuration
+      let animConfig: StreakAnimationConfig = {};
+      if (query.animConfig) {
+        try {
+          animConfig = JSON.parse(decodeURIComponent(query.animConfig));
+        } catch (_) {
+          try { animConfig = JSON.parse(query.animConfig); } catch (__) {}
+        }
+      }
+      if (query.animationUrl) animConfig.customUrl = query.animationUrl;
+      if (query.primaryColor) animConfig.primaryColor = query.primaryColor;
+      if (query.speed) animConfig.speed = parseFloat(query.speed);
+      if (query.preset) animConfig.preset = query.preset as any;
 
       // 1. Fetch rule by slug (across all tenants)
       const ruleRow = await db.get<any>(
@@ -155,7 +206,7 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         externalUserId,
         userTimezone,
         initialCalendar,
-        query.animationUrl
+        animConfig
       );
       return reply.type('text/html').send(html);
     }
@@ -334,7 +385,7 @@ function renderEmbedHtml(
   externalUserId: string,
   timezone: string,
   calendar: MonthCalendarDTO,
-  customAnimationUrl?: string
+  animConfig?: StreakAnimationConfig
 ): string {
   const streak = state.currentStreak || 0;
   const highest = state.highestStreak || streak;
@@ -343,23 +394,39 @@ function renderEmbedHtml(
   const history = state.historyLast14Days || [];
   const milestone = state.milestone;
 
-  let glow = 'none';
+  const anim = animConfig || {};
+  let defaultThemeColor = '#f59e0b';
+  let defaultGlow = '0 0 24px rgba(245, 158, 11, 0.7)';
   let statusText = 'Pending';
   let statusBadgeBg = '#334155';
 
   if (status === 'ACTIVE_TODAY') {
-    glow = '0 0 24px rgba(245, 158, 11, 0.7)';
+    defaultThemeColor = '#f59e0b';
+    defaultGlow = '0 0 24px rgba(245, 158, 11, 0.7)';
     statusText = 'Active Today';
     statusBadgeBg = '#15803d';
   } else if (status === 'AT_RISK') {
-    glow = '0 0 20px rgba(239, 68, 68, 0.8)';
+    defaultThemeColor = '#ef4444';
+    defaultGlow = '0 0 20px rgba(239, 68, 68, 0.8)';
     statusText = 'At Risk!';
     statusBadgeBg = '#b91c1c';
   } else if (status === 'FROZEN') {
-    glow = '0 0 20px rgba(56, 189, 248, 0.7)';
+    defaultThemeColor = '#38bdf8';
+    defaultGlow = '0 0 20px rgba(56, 189, 248, 0.7)';
     statusText = 'Frozen';
     statusBadgeBg = '#0369a1';
   }
+
+  // Developer code-customized animation options
+  const primaryColor = anim.primaryColor || defaultThemeColor;
+  const glow = anim.glowColor ? `0 0 24px ${anim.glowColor}` : defaultGlow;
+  const speed = anim.speed && anim.speed > 0 ? anim.speed : 1.0;
+  const preset = anim.preset || (status === 'FROZEN' ? 'frost' : 'flame');
+  const particleCount = anim.particleCount && anim.particleCount > 0 ? anim.particleCount : 40;
+
+  // Compute hue rotation for SVG/Lottie flame from base amber (hue 38 deg)
+  const targetHue = hexToHue(primaryColor);
+  const hueRotateDeg = (targetHue - 38 + 360) % 360;
 
   const stripHtml = history
     .slice(-10)
@@ -400,6 +467,11 @@ function renderEmbedHtml(
   <title>${ruleName} Streak</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.13.0/lottie.min.js"></script>
   <style>
+    :root {
+      --streak-primary: ${primaryColor};
+      --streak-glow: ${glow};
+      --anim-speed: ${speed}s;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #0f172a;
@@ -465,17 +537,18 @@ function renderEmbedHtml(
     .flame-fallback {
       font-size: 64px;
       line-height: 1;
-      filter: drop-shadow(${glow});
+      filter: drop-shadow(var(--streak-glow));
       animation: float 2.5s ease-in-out infinite;
     }
     #lottie-container {
       width: 100%;
       height: 100%;
+      filter: hue-rotate(${hueRotateDeg}deg);
     }
     .streak-num {
       font-size: 42px;
       font-weight: 800;
-      color: #f59e0b;
+      color: var(--streak-primary);
       line-height: 1;
       margin-bottom: 4px;
     }
@@ -547,6 +620,200 @@ function renderEmbedHtml(
     /* Month Calendar View Styles */
     .cal-header {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .cal-month-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.3px;
+    }
+    .cal-nav-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .cal-nav-btn:hover { background: #334155; color: #ffffff; }
+
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .cal-weekday {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+    .cal-cell {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      position: relative;
+      transition: transform 0.1s;
+    }
+    .cal-empty { background: transparent; }
+    .cal-num { line-height: 1; }
+    .cal-icon { font-size: 9px; line-height: 1; margin-top: 1px; }
+    .cal-icon-dim { color: #64748b; }
+
+    /* Day states */
+    .cal-completed {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid var(--streak-primary);
+      color: var(--streak-primary);
+    }
+    .cal-active_today {
+      background: var(--streak-primary);
+      border: 1px solid var(--streak-primary);
+      color: #ffffff;
+      box-shadow: var(--streak-glow);
+    }
+    .cal-frozen {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.25));
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      color: #38bdf8;
+    }
+    .cal-paused {
+      background: rgba(129, 140, 248, 0.2);
+      border: 1px solid rgba(129, 140, 248, 0.4);
+      color: #a5b4fc;
+    }
+    .cal-exempt {
+      background: #1e293b;
+      color: #64748b;
+    }
+    .cal-missed {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      color: #475569;
+    }
+    .cal-pending_today {
+      border: 1.5px dashed var(--streak-primary);
+      color: var(--streak-primary);
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .cal-at_risk {
+      border: 1.5px dashed #ef4444;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      animation: pulse-ring 1.5s infinite;
+    }
+    .cal-future {
+      background: transparent;
+      color: #334155;
+    }
+    .cal-today {
+      outline: 2px solid var(--streak-primary);
+      outline-offset: 1px;
+    }
+
+    .cal-perfect-banner {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--streak-primary);
+      margin-top: 10px;
+      text-align: center;
+    }
+    .cal-stats-footer {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* 10-day Strip Styles */
+    .history-strip {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .day-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .day-label { font-size: 11px; color: #64748b; }
+    .day-icon {
+      width: 26px;
+      height: 26px;
+      background: #1e293b;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .milestone-banner {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 88, 12, 0.15));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--streak-primary);
+      margin-bottom: 20px;
+    }
+    .share-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--streak-primary);
+      color: #0f172a;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-btn:hover { filter: brightness(0.9); }
+    canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 99;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
@@ -925,26 +1192,29 @@ function renderEmbedHtml(
       loadMonthCalendar(y, m);
     });
 
-    // Lottie Animation Player with Graceful Fallback
+    // Lottie Animation Player with Graceful Fallback and Programmatic Speed Control
     (function initLottie() {
       var container = document.getElementById('lottie-container');
       var fallback = document.getElementById('flameFallback');
       if (!window.lottie || !container) return;
 
       var defaultFlameUrl = 'https://raw.githubusercontent.com/henriquegpb/rodada/main/components/streak/fire-streak.json';
-      var animUrl = ${customAnimationUrl ? `'${customAnimationUrl}'` : 'defaultFlameUrl'};
+      var animUrl = ${anim.customUrl ? `'${anim.customUrl}'` : 'defaultFlameUrl'};
 
       try {
         var anim = window.lottie.loadAnimation({
           container: container,
           renderer: 'svg',
-          loop: true,
+          loop: ${anim.loop !== false},
           autoplay: true,
           path: animUrl
         });
 
         anim.addEventListener('DOMLoaded', function() {
           if (fallback) fallback.style.display = 'none';
+          if (${speed} !== 1.0) {
+            anim.setSpeed(${speed});
+          }
         });
 
         anim.addEventListener('data_failed', function() {
@@ -977,25 +1247,79 @@ function renderEmbedHtml(
       }
     });
 
-    // Spark Particles for celebration
+    // Code-Driven Particle Celebration Engine (Customizable preset, timing, and palette)
     if ('${status}' === 'ACTIVE_TODAY' || ${streak} > 0) {
       var canvas = document.getElementById('canvas');
       var ctx = canvas.getContext('2d');
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
+      var preset = '${preset}';
+      var pSpeed = ${speed};
+      var pCount = ${particleCount};
+      var palette = ${JSON.stringify(anim.particleColors || [primaryColor, anim.secondaryColor || '#fbbf24', '#ffffff'])};
+
       var particles = [];
-      for (var i = 0; i < 40; i++) {
-        particles.push({
-          x: window.innerWidth / 2,
-          y: 180,
-          vx: (Math.random() - 0.5) * 6,
-          vy: -Math.random() * 5 - 2,
-          radius: Math.random() * 3 + 2,
-          color: ['#f59e0b', '#ef4444', '#fbbf24'][Math.floor(Math.random() * 3)],
-          alpha: 1,
-          decay: Math.random() * 0.02 + 0.015
-        });
+      for (var i = 0; i < pCount; i++) {
+        if (preset === 'confetti') {
+          particles.push({
+            type: 'confetti',
+            x: window.innerWidth / 2 + (Math.random() - 0.5) * 120,
+            y: 160 + (Math.random() - 0.5) * 40,
+            w: Math.random() * 8 + 4,
+            h: Math.random() * 6 + 3,
+            vx: (Math.random() - 0.5) * 12 * pSpeed,
+            vy: (-Math.random() * 10 - 4) * pSpeed,
+            gravity: 0.28 * pSpeed,
+            color: palette[Math.floor(Math.random() * palette.length)],
+            tilt: Math.random() * 10,
+            tiltAngle: Math.random() * Math.PI,
+            tiltSpeed: (Math.random() * 0.1 + 0.05) * pSpeed,
+            alpha: 1,
+            decay: Math.random() * 0.008 + 0.005
+          });
+        } else if (preset === 'frost') {
+          particles.push({
+            type: 'frost',
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * -50,
+            radius: Math.random() * 3 + 1.5,
+            vx: (Math.random() - 0.5) * 1.5 * pSpeed,
+            vy: (Math.random() * 2 + 1) * pSpeed,
+            color: palette[Math.floor(Math.random() * palette.length)],
+            alpha: 1,
+            decay: Math.random() * 0.004 + 0.002
+          });
+        } else if (preset === 'fireworks') {
+          var angle = Math.random() * Math.PI * 2;
+          var spd = (Math.random() * 7 + 2) * pSpeed;
+          particles.push({
+            type: 'circle',
+            x: window.innerWidth / 2,
+            y: 180,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            radius: Math.random() * 3 + 1.5,
+            friction: 0.96,
+            gravity: 0.06 * pSpeed,
+            color: palette[Math.floor(Math.random() * palette.length)],
+            alpha: 1,
+            decay: Math.random() * 0.02 + 0.012
+          });
+        } else {
+          // 'flame' or 'ember'
+          particles.push({
+            type: 'circle',
+            x: window.innerWidth / 2 + (Math.random() - 0.5) * 30,
+            y: 180,
+            vx: (Math.random() - 0.5) * 5 * pSpeed,
+            vy: (-Math.random() * 5 - 2) * pSpeed,
+            radius: Math.random() * 3 + 2,
+            color: palette[Math.floor(Math.random() * palette.length)],
+            alpha: 1,
+            decay: Math.random() * 0.02 + 0.015
+          });
+        }
       }
 
       function animate() {
@@ -1003,16 +1327,31 @@ function renderEmbedHtml(
         var active = false;
         for (var j = 0; j < particles.length; j++) {
           var p = particles[j];
+          if (p.friction) { p.vx *= p.friction; p.vy *= p.friction; }
+          if (p.gravity) { p.vy += p.gravity; }
           p.x += p.vx;
           p.y += p.vy;
+          if (p.type === 'frost') {
+            p.x += Math.sin(p.y * 0.04) * 0.8;
+          }
           p.alpha -= p.decay;
-          if (p.alpha > 0) {
+          if (p.alpha > 0 && p.y < window.innerHeight + 50) {
             active = true;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
             ctx.globalAlpha = p.alpha;
-            ctx.fill();
+            if (p.type === 'confetti') {
+              p.tiltAngle += p.tiltSpeed;
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              ctx.rotate(p.tiltAngle);
+              ctx.fillStyle = p.color;
+              ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+              ctx.restore();
+            } else {
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+              ctx.fillStyle = p.color;
+              ctx.fill();
+            }
           }
         }
         if (active) requestAnimationFrame(animate);

@@ -266,6 +266,34 @@ describe('StreakKit E2E API Integration', () => {
     assert.ok(typeof body.activeDaysCount === 'number');
   });
 
+  it('GET /v1/embed/:ruleSlug/:userId supports code-driven animations (custom color, speed, and behavior preset)', async () => {
+    const customConfig = {
+      primaryColor: '#22c55e',
+      speed: 1.75,
+      preset: 'confetti',
+      particleCount: 80,
+      particleColors: ['#22c55e', '#10b981', '#34d399']
+    };
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/v1/embed/hujjify_playback/listener_guest?animConfig=${encodeURIComponent(JSON.stringify(customConfig))}`
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.headers['content-type'], 'text/html');
+    // Verify CSS variables adopted custom color
+    assert.ok(res.body.includes('--streak-primary: #22c55e'));
+    // Verify SVG flame hue-rotation calculation
+    assert.ok(res.body.includes('hue-rotate('));
+    // Verify custom playback speed is injected
+    assert.ok(res.body.includes('anim.setSpeed(1.75)'));
+    // Verify custom behavior preset is injected into particle physics engine
+    assert.ok(res.body.includes("preset = 'confetti'"));
+    assert.ok(res.body.includes('pCount = 80'));
+    assert.ok(res.body.includes('#34d399'));
+  });
+
   it('Rule Management API: list, create, and update rules dynamically', async () => {
     // 1. List rules
     const listRes = await server.inject({

@@ -1,4 +1,18 @@
 // packages/sdk-core/src/micro.ts: Universal Zero-Friction Micro-Client for Any Framework
+export interface StreakAnimationConfig {
+  preset?: 'flame' | 'confetti' | 'frost' | 'fireworks' | 'zen';
+  primaryColor?: string;     // Hex e.g. '#22c55e', '#8b5cf6', '#ec4899'
+  secondaryColor?: string;   // Hex e.g. '#10b981'
+  glowColor?: string;        // CSS color e.g. 'rgba(34, 197, 94, 0.7)'
+  speed?: number;            // 0.5 to 3.0 playback & particle speed
+  particleCount?: number;    // Number of active particles (e.g. 20 - 150)
+  particleColors?: string[]; // Array of hex colors for particles
+  behavior?: 'ember' | 'confetti' | 'fountain' | 'float';
+  durationMs?: number;       // Duration for celebration in ms
+  loop?: boolean;            // Whether animation loops or plays once
+  customUrl?: string;        // Optional custom Lottie JSON URL
+}
+
 export interface StreakRuleConfig {
   slug: string;
   name?: string;
@@ -191,14 +205,31 @@ export class StreakKitClient {
   }
 
   /**
-   * Mounts the hardware-accelerated universal animated Lottie modal
+   * Mounts the hardware-accelerated universal animated Lottie modal with customizable color, behavior, and timing
    */
-  showModal(ruleSlug: string, customAnimationUrl?: string) {
+  showModal(
+    ruleSlug: string,
+    options?: string | { customAnimationUrl?: string; animation?: StreakAnimationConfig }
+  ) {
     if (typeof document === 'undefined') return;
 
     let url = `${this.endpoint}/v1/embed/${encodeURIComponent(ruleSlug)}/${encodeURIComponent(this.userId)}`;
-    if (customAnimationUrl) {
-      url += `?animationUrl=${encodeURIComponent(customAnimationUrl)}`;
+    
+    if (typeof options === 'string') {
+      url += `?animationUrl=${encodeURIComponent(options)}`;
+    } else if (options) {
+      const params = new URLSearchParams();
+      if (options.customAnimationUrl) {
+        params.set('animationUrl', options.customAnimationUrl);
+      }
+      if (options.animation) {
+        params.set('animConfig', JSON.stringify(options.animation));
+        if (options.animation.primaryColor) params.set('primaryColor', options.animation.primaryColor);
+        if (options.animation.speed) params.set('speed', String(options.animation.speed));
+        if (options.animation.preset) params.set('preset', options.animation.preset);
+      }
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
     }
 
     const iframe = document.createElement('iframe');
@@ -240,11 +271,20 @@ export async function pingStreak(options: MicroPingOptions) {
   return client.ping(options.ruleSlug, options.value);
 }
 
-export function openStreakModal(options: { endpoint?: string; ruleSlug: string; userId: string; customAnimationUrl?: string }) {
+export function openStreakModal(options: {
+  endpoint?: string;
+  ruleSlug: string;
+  userId: string;
+  customAnimationUrl?: string;
+  animation?: StreakAnimationConfig;
+}) {
   const client = new StreakKitClient({
     endpoint: options.endpoint,
     publicKey: 'public',
     userId: options.userId
   });
-  client.showModal(options.ruleSlug, options.customAnimationUrl);
+  client.showModal(options.ruleSlug, {
+    customAnimationUrl: options.customAnimationUrl,
+    animation: options.animation
+  });
 }
