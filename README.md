@@ -2,9 +2,9 @@
 
 > **StreakKit** is a code-first, zero-dashboard gamification and streak infrastructure engine designed for mobile and web applications. It replaces $299/month platforms (like Trophy.so) with deterministic local-first state machines, universal embed UI, and pure SDK configuration.
 >
-> 🌐 **Live Documentation & Interactive Demo:** [https://intisor.github.io/StreakIt/](https://intisor.github.io/StreakIt/)  
-> 📱 **Duolingo-in-a-Box Interactive Demo:** [https://intisor.github.io/StreakIt/demo-duolingo.html](https://intisor.github.io/StreakIt/demo-duolingo.html)  
-> 🤖 **AI-Native Spec:** [`docs/llms.txt`](https://intisor.github.io/StreakIt/llms.txt)
+> 🌐 **Live Documentation & Interactive Demo:** [https://intisor.github.io/StreakKIt/](https://intisor.github.io/StreakKIt/)  
+> 📱 **Duolingo-in-a-Box Interactive Demo:** [https://intisor.github.io/StreakKIt/demo-duolingo.html](https://intisor.github.io/StreakKIt/demo-duolingo.html)  
+> 🤖 **AI-Native Spec:** [`docs/llms.txt`](https://intisor.github.io/StreakKIt/llms.txt)
 
 ---
 
