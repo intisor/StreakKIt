@@ -547,4 +547,71 @@ object StreakKit {
             }
         })
     }
+
+    /**
+     * Cross-Action Behavioral Contrast Nudges (Counter-Habit Nudge Engine)
+     * e.g. "You listened to music for 45 mins, but did not protect your deen?"
+     */
+    fun evaluateContrastNudge(
+        context: Context,
+        userId: String,
+        neglectedRuleSlug: String,
+        triggerAction: String,
+        triggerLabel: String,
+        durationMinutes: Int? = null,
+        archetype: String = "GUILT_PRIORITY",
+        customCopies: List<String> = emptyList(),
+        autoShowNotification: Boolean = true,
+        onResult: ((JSONObject?) -> Unit)? = null
+    ) {
+        val triggerObj = JSONObject().apply {
+            put("action", triggerAction)
+            put("label", triggerLabel)
+            if (durationMinutes != null) put("durationMinutes", durationMinutes)
+        }
+
+        val body = JSONObject().apply {
+            put("userId", userId)
+            put("neglectedRuleSlug", neglectedRuleSlug)
+            put("triggerActivity", triggerObj)
+            put("archetype", archetype)
+            if (customCopies.isNotEmpty()) {
+                put("customCopies", JSONArray(customCopies))
+            }
+        }
+
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/notifications/contrast")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { onResult?.invoke(null) }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val respStr = response.body?.string() ?: "{}"
+                val json = try { JSONObject(respStr) } catch (_: Exception) { JSONObject() }
+                val notif = json.optJSONObject("notification")
+                val completedToday = json.optBoolean("completedToday", false)
+
+                if (autoShowNotification && notif != null && !completedToday) {
+                    val title = notif.optString("title", "🔥 Streak Alert")
+                    val bodyText = notif.optString("body", "Protect your streak today!")
+                    StreakNotificationManager.showContrastNotification(
+                        context = context,
+                        title = title,
+                        body = bodyText,
+                        neglectedRuleSlug = neglectedRuleSlug,
+                        triggerAction = triggerAction
+                    )
+                }
+
+                mainHandler.post { onResult?.invoke(notif) }
+            }
+        })
+    }
 }

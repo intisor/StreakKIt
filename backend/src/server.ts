@@ -10,6 +10,7 @@ import { registerEmbedRoutes } from './api/routes/embed.js';
 import { registerRuleRoutes } from './api/routes/rules.js';
 import { registerMoatRoutes } from './api/routes/moats.js';
 import { registerDashboardRoutes } from './api/routes/dashboard.js';
+import { registerNotificationRoutes } from './api/routes/notifications.js';
 import { WebhookDispatcherWorker } from './workers/webhook-dispatcher.js';
 
 export async function buildServer() {
@@ -35,6 +36,7 @@ export async function buildServer() {
   await registerRuleRoutes(fastify);
   await registerMoatRoutes(fastify);
   await registerDashboardRoutes(fastify);
+  await registerNotificationRoutes(fastify);
 
   return fastify;
 }

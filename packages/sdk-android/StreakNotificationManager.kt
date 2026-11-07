@@ -99,6 +99,26 @@ object StreakNotificationManager {
     }
 
     /**
+     * Behavioral Contrast / Counter-Habit Nudge
+     * e.g. "You listened to music for 45 mins, but did not protect your deen?"
+     */
+    fun showContrastNotification(
+        context: Context,
+        title: String,
+        body: String,
+        neglectedRuleSlug: String,
+        triggerAction: String = ""
+    ) {
+        showNotification(
+            context = context,
+            title = title,
+            body = body,
+            ruleSlug = neglectedRuleSlug,
+            urgency = "BEHAVIORAL_CONTRAST"
+        )
+    }
+
+    /**
      * Evaluates local streak state and immediately alerts if urgent (< 2 hours or < 30 mins)
      */
     fun checkAndAlertIfUrgent(

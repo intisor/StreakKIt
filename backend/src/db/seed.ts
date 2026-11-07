@@ -11,7 +11,7 @@ export async function seedDatabase(db = getDb()) {
   const zikfashSk = 'sk_live_zikfash_secret';
   const zikfashSkHash = crypto.createHash('sha256').update(zikfashSk).digest('hex');
 
-  const existingZikfash = await db.get('SELECT id FROM tenants WHERE public_key = $1', [zikfashPk]);
+  const existingZikfash = await db.get('SELECT id FROM tenants WHERE id = $1 OR public_key = $2', [zikfashId, zikfashPk]);
   if (!existingZikfash) {
     await db.execute(
       `INSERT INTO tenants (id, name, public_key, secret_key_hash, webhook_url, webhook_secret)
@@ -30,8 +30,8 @@ export async function seedDatabase(db = getDb()) {
 
   // ZikFash Rule: daily_tailor_log
   const existingZikfashRule = await db.get(
-    'SELECT id FROM streak_rules WHERE slug = $1',
-    ['daily_tailor_log']
+    'SELECT id FROM streak_rules WHERE id = $1 OR slug = $2',
+    ['018f0000-0000-7000-8000-000000000002', 'daily_tailor_log']
   );
   if (!existingZikfashRule) {
     await db.execute(
@@ -64,7 +64,7 @@ export async function seedDatabase(db = getDb()) {
   const hujjifySk = 'sk_live_hujjify_secret';
   const hujjifySkHash = crypto.createHash('sha256').update(hujjifySk).digest('hex');
 
-  const existingHujjify = await db.get('SELECT id FROM tenants WHERE public_key = $1', [hujjifyPk]);
+  const existingHujjify = await db.get('SELECT id FROM tenants WHERE id = $1', [hujjifyId]);
   if (!existingHujjify) {
     await db.execute(
       `INSERT INTO tenants (id, name, public_key, secret_key_hash, webhook_url, webhook_secret)
@@ -79,12 +79,17 @@ export async function seedDatabase(db = getDb()) {
       ]
     );
     console.log('[Seed] Created tenant: Hujjify');
+  } else {
+    await db.execute(
+      `UPDATE tenants SET public_key = $1, name = 'Hujjify Music & Lyric Ledger' WHERE id = $2`,
+      [hujjifyPk, hujjifyId]
+    );
   }
 
   // Hujjify Rule: hujjify_playback
   const existingHujjifyRule = await db.get(
-    'SELECT id FROM streak_rules WHERE slug = $1',
-    ['hujjify_playback']
+    'SELECT id FROM streak_rules WHERE id = $1 OR slug = $2',
+    ['018f0000-0000-7000-8000-000000000004', 'hujjify_playback']
   );
   if (!existingHujjifyRule) {
     const tenantRow = await db.get('SELECT id FROM tenants WHERE public_key = $1', [hujjifyPk]);

@@ -8,7 +8,7 @@
     "build": "tsc && node -e \"require('fs').writeFileSync('dist/server.js', 'import \\\"./src/server.js\\\";\\n')\"",
     "start": "node dist/src/server.js",
     "dev": "node --watch src/server.ts",
-    "test": "node --test --test-concurrency=1 dist/tests/evaluator.test.js dist/tests/api.e2e.test.js dist/tests/hujjify.sim.test.js",
+    "test": "node --test --test-concurrency=1 dist/tests/evaluator.test.js dist/tests/api.e2e.test.js dist/tests/hujjify.sim.test.js dist/tests/learnguw.poc.test.js dist/tests/calendar.test.js dist/tests/notifications.test.js",
     "seed": "node dist/src/db/seed.js"
   },
   "dependencies": {
