@@ -202,12 +202,30 @@ Base Headers: `Authorization: Bearer <PUBLIC_OR_SECRET_KEY>`, `Content-Type: app
 | **Vacation Pause**| `POST` | `/v1/streak/pause` | `{"ruleSlug": "...", "externalUserId": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD"}` |
 | **Friends Rank**  | `POST` | `/v1/streak/friends` | `{"ruleSlug": "...", "userIds": ["usr1", "usr2"]}` |
 | **Wrapped Stats** | `GET`  | `/v1/streak/wrapped?ruleSlug=...&externalUserId=...&year=2026` | *None* |
+| **IAP Repair Pay**| `POST` | `/v1/streak/repair-verify` | `{"ruleSlug": "...", "externalUserId": "...", "paymentProof": {"provider": "google_play", "transactionId": "..."}}` |
 | **Month Calendar**| `GET`  | `/v1/streaks/:ruleSlug/:externalUserId/calendar?year=2026&month=11` | *None (returns MonthCalendarDTO)* |
-| **Lottie Embed**  | `GET`  | `/v1/embed/:ruleSlug/:externalUserId` | *None (renders HTML with interactive Month Calendar)* |
+| **Lottie Embed**  | `GET`  | `/v1/embed/:ruleSlug/:externalUserId` | *None (renders HTML with interactive Month Calendar, Web Audio synthesizer & IAP paywall)* |
 
 ---
 
-## 5. Visual Calendar & Date UIs (Duolingo-Grade)
+## 5. Visual Calendar, Audio Synthesizer & Monetization Paywalls
+
+1. **Procedural Web Audio Engine (0-Byte Footprint):**
+   - Procedurally synthesizes real-time dopamine soundscapes via the Web Audio API (`streak_extend` ascending chord, `streak_freeze` crystal shimmer, `streak_at_risk` dual pulse, `milestone_unlocked` arpeggio).
+   - Embedded volume toggle (`🔊` / `🔇`) with `localStorage` persistence.
+   - Dispatches `window.StreakBridge.onSoundEffect(type)` for native Android/iOS haptics.
+
+2. **In-App Purchase (IAP) Streak Rescue Paywall:**
+   - When a user's streak is broken, the embed automatically displays a high-converting Streak Rescue paywall (`💎 Restore for $2.99` or `🪙 50 Gems`).
+   - Dispatches `window.parent.postMessage({ type: 'STREAKKIT_PURCHASE_INTENT' })` and native bridge `StreakBridge.onPurchaseRequest(json)`.
+   - Host app verifies receipt with `POST /v1/streak/repair-verify` to restore the streak atomically.
+
+3. **Airplane-Mode Transatlantic Drift Protection:**
+   - Ingest offline events using `event.metadata.timezone` (creation timezone) so transatlantic flights (e.g. London to NY) don't falsely cross midnight or consume emergency freezes.
+
+---
+
+## 6. Visual Calendar & Date UIs (Duolingo-Grade)
 
 Who fulfills calendar, date UIs? **StreakKit fulfills it out of the box.**
 
