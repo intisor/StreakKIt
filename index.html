@@ -3,370 +3,1103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StreakKit — Open-Source Zero-Dashboard Streak & Retention Engine</title>
-  <meta name="description" content="Drop-in, offline-first streak and gamification engine for Android, Flutter, React Native, and Web. Zero web dashboards. Duolingo-grade dopamine UIs.">
+  <title>StreakKit Documentation — Code-First Streak & Gamification Engine</title>
+  <meta name="description" content="Official documentation for StreakKit: the zero-dashboard, offline-first retention and gamification engine with Duolingo-grade drop-in UIs.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
   <style>
     :root {
       --bg: #090d16;
-      --card: #131c2e;
-      --border: #233554;
+      --bg-sidebar: #0d1322;
+      --bg-card: #111927;
+      --bg-code: #070b12;
+      --border: #1e293b;
+      --border-focus: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
       --accent-flame: #f59e0b;
       --accent-green: #10b981;
       --accent-blue: #3b82f6;
-      --accent-purple: #a855f7;
-      --text: #f8fafc;
-      --muted: #94a3b8;
+      --accent-purple: #8b5cf6;
+      --accent-red: #ef4444;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); line-height: 1.6; }
-    
-    header {
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Navigation Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9, 13, 22, 0.95);
+      backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
-      padding: 18px 24px;
+      height: 60px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      max-width: 1200px;
-      margin: 0 auto;
+      justify-content: space-between;
+      padding: 0 24px;
     }
-    .brand { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
-    .nav-links { display: flex; gap: 20px; align-items: center; }
-    .nav-link { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: color 0.2s; }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.3px;
+    }
+    .badge-version {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-flame);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: color 0.15s ease;
+    }
     .nav-link:hover { color: var(--text); }
-    .btn-github {
+    .btn-topbar {
+      padding: 6px 13px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-topbar-gh {
       background: #1e293b;
       border: 1px solid var(--border);
-      padding: 8px 16px;
-      border-radius: 20px;
-      color: white;
+      color: #ffffff;
+    }
+    .btn-topbar-gh:hover { background: #334155; }
+    .btn-topbar-demo {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--accent-green);
+    }
+    .btn-topbar-demo:hover { background: rgba(16, 185, 129, 0.25); }
+
+    .menu-toggle {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Documentation Layout */
+    .doc-layout {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--bg-sidebar);
+      padding: 24px 16px;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { width: 5px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+    .sidebar-group {
+      margin-bottom: 24px;
+    }
+    .sidebar-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-dim);
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      padding-left: 8px;
+    }
+    .sidebar-item {
+      display: block;
+      padding: 6px 10px;
+      font-size: 13.5px;
+      color: var(--text-muted);
       text-decoration: none;
-      font-size: 13px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.12s ease;
+    }
+    .sidebar-item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .sidebar-item.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      font-weight: 600;
+    }
+
+    /* Main Content Area */
+    .content {
+      flex: 1;
+      padding: 40px 48px 100px;
+      max-width: 880px;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+    .lead-text {
+      font-size: 17px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    h2 {
+      font-size: 22px;
+      font-weight: 750;
+      letter-spacing: -0.4px;
+      margin: 44px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h3 {
+      font-size: 16px;
       font-weight: 700;
+      margin: 28px 0 10px;
+      color: #e2e8f0;
+    }
+    p {
+      margin-bottom: 16px;
+      color: #cbd5e1;
+    }
+    ul, ol {
+      margin: 0 0 20px 24px;
+      color: #cbd5e1;
+    }
+    li {
+      margin-bottom: 6px;
+    }
+    strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    /* Code Blocks */
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 14px 0 22px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.55;
+      color: #e2e8f0;
+    }
+    code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+    }
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    /* Callout Alerts */
+    .callout {
+      border-left: 3px solid var(--accent-blue);
+      background: rgba(59, 130, 246, 0.08);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 20px 0;
+    }
+    .callout-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #60a5fa;
+      margin-bottom: 4px;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
     }
-    .btn-github:hover { background: #334155; }
+    .callout p {
+      margin-bottom: 0;
+      font-size: 14px;
+      color: #bfdbfe;
+    }
+    .callout-tip {
+      border-left-color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .callout-tip .callout-title { color: #34d399; }
+    .callout-tip p { color: #a7f3d0; }
 
-    /* Hero Section */
-    .hero {
-      text-align: center;
-      padding: 70px 20px 40px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .hero-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid var(--accent-flame);
-      color: var(--accent-flame);
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-bottom: 20px;
-    }
-    h1 {
-      font-size: 48px;
-      font-weight: 900;
-      letter-spacing: -1px;
-      line-height: 1.15;
-      margin-bottom: 20px;
-      background: linear-gradient(135deg, #ffffff 30%, #94a3b8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero-sub {
-      font-size: 18px;
-      color: var(--muted);
-      max-width: 720px;
-      margin: 0 auto 30px;
-    }
-    .hero-cta-row {
-      display: flex;
-      gap: 14px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 40px;
-    }
-    .btn-cta {
-      padding: 14px 26px;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 800;
-      text-decoration: none;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-cta-primary { background: var(--accent-flame); color: #090d16; }
-    .btn-cta-primary:hover { filter: brightness(1.1); transform: translateY(-2px); }
-    .btn-cta-demo { background: var(--accent-blue); color: white; }
-    .btn-cta-demo:hover { filter: brightness(1.1); transform: translateY(-2px); }
-    .btn-cta-secondary { background: var(--card); border: 1px solid var(--border); color: white; }
-    .btn-cta-secondary:hover { background: #1e293b; }
-
-    /* Features Grid */
-    .features-sec {
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
-    .sec-title {
-      font-size: 26px;
-      font-weight: 800;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
-    }
-    .feature-card {
-      background: var(--card);
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      margin: 16px 0 24px;
       border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 24px;
-      transition: all 0.2s;
+      border-radius: 8px;
     }
-    .feature-card:hover { border-color: #38bdf8; transform: translateY(-3px); }
-    .card-icon { font-size: 30px; margin-bottom: 12px; }
-    .card-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: #f8fafc; }
-    .card-desc { font-size: 14px; color: var(--muted); line-height: 1.5; }
-
-    /* Code Tabs Section */
-    .code-sec {
-      max-width: 900px;
-      margin: 50px auto;
-      padding: 0 20px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13.5px;
     }
-    .tab-bar {
-      display: flex;
-      gap: 8px;
+    th {
+      background: #0d1424;
+      padding: 10px 14px;
+      font-weight: 700;
+      color: #f1f5f9;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 16px;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.6);
+      color: #cbd5e1;
+    }
+    tr:last-child td { border-bottom: none; }
+    .badge-method {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .method-get { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .method-post { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    /* Code Tabs Component */
+    .tabs-header {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: -1px;
     }
     .tab-btn {
-      padding: 10px 18px;
       background: transparent;
       border: none;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 700;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
     .tab-btn.active {
-      color: var(--accent-flame);
-      border-bottom-color: var(--accent-flame);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    pre {
-      background: #040810;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-      overflow-x: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.6;
       color: #38bdf8;
+      border-bottom-color: #38bdf8;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Feature Grid Minimal */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin: 24px 0 32px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .feature-card-icon {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .feature-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+    .feature-card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
     }
 
+    /* Footer */
     footer {
+      margin-top: 60px;
+      padding-top: 24px;
       border-top: 1px solid var(--border);
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 14px;
-      margin-top: 80px;
+      font-size: 13px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 860px) {
+      .menu-toggle { display: block; }
+      .sidebar {
+        position: fixed;
+        left: -300px;
+        top: 60px;
+        z-index: 99;
+        transition: left 0.25s ease;
+      }
+      .sidebar.open { left: 0; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+      .content { padding: 30px 20px 80px; }
+      .topbar-right .nav-link { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <a href="#" class="brand">🔥 StreakKit</a>
-    <div class="nav-links">
-      <a href="#features" class="nav-link">Features</a>
-      <a href="#code" class="nav-link">Integration</a>
-      <a href="demo-duolingo.html" class="nav-link" style="color: var(--accent-green);">Live Demo ↗</a>
-      <a href="llms.txt" class="nav-link">llms.txt</a>
-      <a href="https://github.com/intisor/StreakKIt" class="btn-github" target="_blank">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+      <a href="#" class="brand">
+        🔥 StreakKit <span class="badge-version">v1.2.0</span>
+      </a>
+    </div>
+    <div class="topbar-right">
+      <a href="#quickstart" class="nav-link">Quickstart</a>
+      <a href="#sdks" class="nav-link">Client SDKs</a>
+      <a href="#duolingo-in-a-box" class="nav-link">Duolingo-in-a-Box</a>
+      <a href="#api-reference" class="nav-link">REST API</a>
+      <a href="demo-duolingo.html" class="btn-topbar btn-topbar-demo">📱 Live Demo</a>
+      <a href="llms.txt" class="btn-topbar btn-topbar-gh">🤖 llms.txt</a>
+      <a href="https://github.com/intisor/StreakKIt" class="btn-topbar btn-topbar-gh" target="_blank" rel="noreferrer">
+        GitHub ↗
       </a>
     </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="hero-badge">Zero Dashboard · 100% Code-First · MIT</div>
-      <h1>The Drop-In Retention Engine for Mobile & Web Apps</h1>
-      <p class="hero-sub">
-        Replace $299/month gamification SaaS with an offline-first streak machine. 
-        Duolingo-grade red countdown timers, 4-tier flame evolution, behavioral contrast nudges, and 1-line client drop-ins.
-      </p>
+  <div class="doc-layout">
 
-      <div class="hero-cta-row">
-        <a href="demo-duolingo.html" class="btn-cta btn-cta-demo">
-          📱 Try Duolingo-in-a-Box Demo
-        </a>
-        <a href="#code" class="btn-cta btn-cta-primary">
-          ⚡ 3-Minute Quickstart
-        </a>
-        <a href="llms.txt" class="btn-cta btn-cta-secondary">
-          🤖 AI Agent Docs (llms.txt)
-        </a>
-      </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features-sec" id="features">
-      <h2 class="sec-title">Engineered for Hyper-Retention</h2>
-      <div class="grid-3">
-        
-        <div class="feature-card">
-          <div class="card-icon">❤️</div>
-          <div class="card-title">Duolingo-in-a-Box (Hearts, Gems & Path)</div>
-          <div class="card-desc">Full 5/5 ❤️ Hearts with 4-hour background auto-refills, 💎 Gems ledger, <code>0/20 XP</code> Daily Goal bar, and the drop-in S-curve Winding Path UI.</div>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">⏳</div>
-          <div class="card-title">Live Red Chronometer</div>
-          <div class="card-desc">Replicates Duolingo's high-urgency ticking red countdown timer inside Android's native notification shade using <code>setUsesChronometer(true)</code>.</div>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">👑</div>
-          <div class="card-title">Flame Tier Evolution</div>
-          <div class="card-desc">Streaks dynamically mutate from Bronze Ember 🔥 to Sapphire Flame 🔷, Amethyst Nova ⚡, and Solar Obsidian 👑 with 1-tap WhatsApp and Instagram status sharing.</div>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">🎧</div>
-          <div class="card-title">Behavioral Contrast Nudges</div>
-          <div class="card-desc">Contrast leisure activities with neglected goals: <em>"You spent 45m listening to music, but didn't protect your deen / lesson streak today?"</em></div>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">🕊️</div>
-          <div class="card-title">Streak Amnesty (Churn Recovery)</div>
-          <div class="card-desc">Recovers churned users who lost 30-day streaks by triggering automated 48-hour resurrection campaigns after 14 days of dormancy.</div>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">⚡</div>
-          <div class="card-title">Zero Web Dashboard</div>
-          <div class="card-desc">No external dashboards, manual metric mapping, or synced web consoles. All daily targets, rest days, and auto-freeze rules are declared in code.</div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- Code Integration Section -->
-    <section class="code-sec" id="code">
-      <h2 class="sec-title">Drop-In Across Any Platform</h2>
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar" id="sidebar">
       
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab('android')">Android (Kotlin)</button>
-        <button class="tab-btn" onclick="switchTab('flutter')">Flutter (Dart)</button>
-        <button class="tab-btn" onclick="switchTab('rn')">React Native (Expo)</button>
-        <button class="tab-btn" onclick="switchTab('api')">REST API (cURL)</button>
+      <div class="sidebar-group">
+        <div class="sidebar-title">Getting Started</div>
+        <a href="#overview" class="sidebar-item">Overview & Philosophy</a>
+        <a href="#quickstart" class="sidebar-item">3-Minute Quickstart</a>
+        <a href="#architecture" class="sidebar-item">Architecture</a>
       </div>
 
-      <!-- Android -->
-      <div id="tab-android" class="tab-content active">
-        <pre><code>// 1. Initialize once in MainActivity or Application:
+      <div class="sidebar-group">
+        <div class="sidebar-title">Client Drop-Ins</div>
+        <a href="#sdk-android" class="sidebar-item">Android (Kotlin)</a>
+        <a href="#sdk-flutter" class="sidebar-item">Flutter (Dart)</a>
+        <a href="#sdk-react-native" class="sidebar-item">React Native (Expo)</a>
+        <a href="#sdk-rest" class="sidebar-item">cURL / Direct HTTP</a>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-title">Core Engine</div>
+        <a href="#rules-auto-sync" class="sidebar-item">Code-First Rules</a>
+        <a href="#timezone-grace" class="sidebar-item">Midnight Grace Periods</a>
+        <a href="#days-off" class="sidebar-item">Rest Days (daysOff)</a>
+        <a href="#freezes" class="sidebar-item">Safety Freezes</a>
+        <a href="#streak-amnesty" class="sidebar-item">Streak Amnesty (Recovery)</a>
+        <a href="#flame-tiers" class="sidebar-item">Flame Tier Evolution</a>
+        <a href="#anti-cheat" class="sidebar-item">Anti-Cheat Clocks</a>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-title">Duolingo-in-a-Box</div>
+        <a href="#duolingo-in-a-box" class="sidebar-item">❤️ Hearts & Auto-Refills</a>
+        <a href="#gems-ledger" class="sidebar-item">💎 Virtual Gems Ledger</a>
+        <a href="#daily-xp" class="sidebar-item">🚩 Daily Goal (0/20 XP)</a>
+        <a href="#winding-path-ui" class="sidebar-item">🗺️ Winding Path UI</a>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-title">Retention Moats</div>
+        <a href="#behavioral-contrast" class="sidebar-item">Behavioral Contrast Nudges</a>
+        <a href="#red-chronometer" class="sidebar-item">Live Red Chronometer</a>
+        <a href="#calendar-ui" class="sidebar-item">Monthly Calendar Grid</a>
+        <a href="#audio-synth" class="sidebar-item">Procedural Audio Synth</a>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-title">REST API Reference</div>
+        <a href="#api-auth" class="sidebar-item">Authentication</a>
+        <a href="#api-ping" class="sidebar-item">POST /v1/ping</a>
+        <a href="#api-state" class="sidebar-item">GET /v1/streaks/...</a>
+        <a href="#api-gamification" class="sidebar-item">Gamification Routes</a>
+        <a href="#api-moats" class="sidebar-item">Moat Endpoints</a>
+        <a href="#api-embed" class="sidebar-item">Embed Routes</a>
+      </div>
+
+    </aside>
+
+    <!-- Main Documentation Body -->
+    <main class="content">
+
+      <!-- Section: Overview -->
+      <section id="overview">
+        <h1>StreakKit Developer Documentation</h1>
+        <p class="lead-text">
+          StreakKit is an open-source, code-first retention and streak infrastructure engine. It replaces \$299–\$999/month commercial platforms (such as Trophy.so) with deterministic, offline-first state machines, universal embed UIs, and pure in-code configuration.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-card-icon">⚡</div>
+            <div class="feature-card-title">Zero Web Dashboard</div>
+            <div class="feature-card-desc">No external portals or synced metric mappings. Targets, cadence, rest days, and auto-freezes are declared in source code.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">❤️</div>
+            <div class="feature-card-title">Duolingo-in-a-Box</div>
+            <div class="feature-card-desc">Complete gamification engine: 5/5 Hearts with 4-hr background auto-refill, virtual Gems, 0/20 XP daily goals, and winding lesson paths.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">🕊️</div>
+            <div class="feature-card-title">Streak Amnesty</div>
+            <div class="feature-card-desc">Recovers churned users who lost multi-week streaks by offering 48-hour resurrection campaigns after 14 days of inactivity.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">📱</div>
+            <div class="feature-card-title">1-Line Native Embeds</div>
+            <div class="feature-card-desc">Opens 60fps vector animated modals and S-curve learning paths in any Android BottomSheet, iOS sheet, Flutter view, or WebView.</div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">The Zero-Dashboard Philosophy</div>
+          <p>
+            In traditional gamification SDKs, developers must navigate a web dashboard, register an organization, manually configure metric IDs, create reward rules, and hardcode slugs. If a field desynchronizes, user streaks silently fail. With StreakKit, the application code itself is the source of truth. Rules auto-provision and sync seamlessly on startup.
+          </p>
+        </div>
+      </section>
+
+      <!-- Section: Quickstart -->
+      <section id="quickstart">
+        <h2>3-Minute Quickstart</h2>
+        <p>
+          Drop the 1-file SDK into your mobile or web project, declare your streak rule inline, and record activity on user actions:
+        </p>
+
+        <div class="tabs-header">
+          <button class="tab-btn active" onclick="switchCodeTab('qs-android', this)">Android (Kotlin)</button>
+          <button class="tab-btn" onclick="switchCodeTab('qs-flutter', this)">Flutter (Dart)</button>
+          <button class="tab-btn" onclick="switchCodeTab('qs-rn', this)">React Native (Expo)</button>
+          <button class="tab-btn" onclick="switchCodeTab('qs-curl', this)">cURL / Direct API</button>
+        </div>
+
+        <div id="qs-android" class="tab-panel active">
+          <pre><code>// 1. Initialize once in MainActivity or Application class:
 StreakKit.init(
     context = this,
     rules = listOf(
-        StreakRule(slug = "daily_lesson", name = "Daily Lesson", target = 1)
+        StreakRule(
+            slug = "daily_lesson",
+            name = "Daily Lesson",
+            target = 1,
+            cadence = "DAILY",
+            gracePeriodMinutes = 120, // Activity until 2:00 AM counts toward yesterday
+            daysOff = listOf(0),       // Sundays are rest days (no streak break)
+            maxFreezes = 3,
+            freezeAutoEarnDays = 7    // Auto-earn +1 freeze every 7 consecutive days
+        )
     )
 )
 
-// 2. Ping streak & award +10 Daily XP on lesson completion:
-StreakKit.ping(this, "daily_lesson", currentUserId)
-StreakKit.addXp(currentUserId, amount = 10, unitId = "unit_1")
+// 2. Ping when user finishes a task:
+StreakKit.ping(this, "daily_lesson", userId = "user_123")
 
-// 3. Deduct ❤️ Heart on wrong quiz answer (or open Duolingo Winding Path UI):
-StreakKit.consumeHeart(currentUserId)
-StreakKit.showDuolingoPath(this, "daily_lesson", currentUserId, flag = "🇳🇬", unitTitle = "Greetings")</code></pre>
-      </div>
+// 3. Open the universal 60fps animated dopamine modal:
+StreakKit.showModal(this, "daily_lesson", userId = "user_123")</code></pre>
+        </div>
 
-      <!-- Flutter -->
-      <div id="tab-flutter" class="tab-content">
-        <pre><code>import 'package:streakkit/streakkit.dart';
+        <div id="qs-flutter" class="tab-panel">
+          <pre><code>import 'package:streakkit/streakkit.dart';
 
-// 1. Initialize
-StreakKit.init(key: "pk_live_your_key", userId: user.id);
+// 1. Initialize once:
+StreakKit.init(key: "pk_live_your_key", userId: "user_123");
 
-// 2. Ping on action
+// 2. Ping on activity:
 await StreakKit.ping("daily_lesson");
 
-// 3. Listen for Milestone Rewards
+// 3. Listen for milestone rewards:
 StreakKit.onMilestoneReached((ruleSlug, day) {
-  unlockBonusLesson(day);
+  print("User unlocked Day $day Milestone Reward!");
 });</code></pre>
-      </div>
+        </div>
 
-      <!-- React Native -->
-      <div id="tab-rn" class="tab-content">
-        <pre><code>import { StreakKit, useStreak } from './useStreakKit';
+        <div id="qs-rn" class="tab-panel">
+          <pre><code>import { StreakKit, useStreak } from './useStreakKit';
 
-// 1. Initialize
-StreakKit.init({ publicKey: "pk_live_your_key", userId: user.id });
+// 1. Initialize:
+StreakKit.init({ publicKey: "pk_live_your_key", userId: "user_123" });
 
-// 2. React Hook in any screen
-export function StreakCard() {
+// 2. Use hook in any component:
+export function DailyStreakWidget() {
   const { currentStreak, isActiveToday, ping, embedUrl } = useStreak("daily_lesson");
 
   return (
     &lt;TouchableOpacity onPress={() => ping()}&gt;
-      &lt;Text&gt;🔥 {currentStreak} Days {isActiveToday ? "✓" : ""}&lt;/Text&gt;
+      &lt;Text&gt;🔥 {currentStreak} Days {isActiveToday ? "✓ Completed" : "Pending"}&lt;/Text&gt;
     &lt;/TouchableOpacity&gt;
   );
 }</code></pre>
-      </div>
+        </div>
 
-      <!-- REST API -->
-      <div id="tab-api" class="tab-content">
-        <pre><code># Record activity and evaluate streak
-curl -X POST https://api.streakkit.dev/v1/ping \
+        <div id="qs-curl" class="tab-panel">
+          <pre><code>curl -X POST https://api.streakkit.dev/v1/ping \
   -H "Authorization: Bearer pk_live_your_key" \
   -H "Content-Type: application/json" \
   -d '{
     "ruleSlug": "daily_lesson",
     "externalUserId": "user_123",
     "value": 1,
-    "timezone": "Africa/Lagos"
+    "timezone": "Africa/Lagos",
+    "ruleConfig": {
+      "name": "Daily Lesson",
+      "target": 1,
+      "gracePeriodMinutes": 120,
+      "maxFreezes": 3,
+      "daysOff": [0]
+    }
   }'</code></pre>
-      </div>
+        </div>
+      </section>
 
-    </section>
-  </main>
+      <!-- Section: Architecture -->
+      <section id="architecture">
+        <h2>Architecture & Deterministic Evaluation</h2>
+        <p>
+          StreakKit is built around an offline-first, mathematically pure state transition engine. The client buffers events locally in SQLite / SharedPreferences during network dropouts, while the server verifies event timestamps against monotonic device clocks:
+        </p>
+        <pre><code>┌─────────────────────────────────────────────────────────────┐
+│                       Client SDK Tier                       │
+│     (Android Kotlin, iOS Swift, TypeScript / React Native)   │
+├───────────────────────────────┬─────────────────────────────┤
+│ • Offline Action Queue        │ • In-Memory State Cache     │
+│ • Universal WebView Bridge    │ • Code-First Rule Auto-Sync │
+└───────────────┬───────────────┴──────────────┬──────────────┘
+                │ HTTP POST /v1/ping           │ GET /v1/embed/...
+                ▼                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      StreakKit Engine                       │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Time-Window & IANA Timezone Engine (Grace Periods)       │
+│ 2. Deterministic State Machine (Evaluator)                  │
+│ 3. Anti-Cheat & Monotonic Clock Verifier                    │
+│ 4. Duolingo-in-a-Box Engine (Hearts, Gems, XP, Path UI)     │
+│ 5. Trophy-Grade Moat Subsystems:                            │
+│    • Auto-Earn Freeze Milestones                            │
+│    • 90-Day Broken Streak Restoration Paywall               │
+│    • Scheduled Vacation Pauses                              │
+│    • Spotify-Style "Wrapped" Year-in-Review Generator       │
+│    • Batch Friends Streak Leaderboards                      │
+│ 6. Universal Vector Embed UI (Lottie + CSS Fallback)        │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+      </section>
 
-  <footer>
-    <p>StreakKit is open-source under the MIT License · Built for Hyper-Retention.</p>
-    <p style="margin-top: 8px; font-size: 13px;">Tested and battle-proven with 60/60 automated tests.</p>
-  </footer>
+      <!-- Section: Client SDKs -->
+      <section id="sdks">
+        <h2>Client SDK Integration</h2>
+        
+        <h3 id="sdk-android">Android (Kotlin / Java)</h3>
+        <p>
+          StreakKit provides a single-file Android drop-in (<a href="file:///packages/sdk-android/StreakKit.kt"><code>StreakKit.kt</code></a>) that requires no third-party Gradle dependencies other than OkHttp:
+        </p>
+        <ul>
+          <li><strong>Offline Ingestion Queue:</strong> If device is offline, requests are persisted to SharedPreferences and flushed on next connect.</li>
+          <li><strong>Duolingo BottomSheet:</strong> <code>StreakKit.showModal(activity, "ruleSlug")</code> opens a native bottom dialog rendering the embed with zero external downloads.</li>
+          <li><strong>Learning Path UI:</strong> <code>StreakKit.showDuolingoPath(activity, "ruleSlug", flag = "🇳🇬", unitTitle = "Greetings")</code> opens the winding lesson map.</li>
+          <li><strong>Haptics & Audio:</strong> Bridges Web Audio synthesis events directly into Android haptic feedback.</li>
+        </ul>
+
+        <h3 id="sdk-flutter">Flutter (Dart)</h3>
+        <p>
+          Drop <a href="file:///packages/sdk-flutter/lib/streakkit.dart"><code>streakkit.dart</code></a> directly into your <code>lib/</code> directory:
+        </p>
+        <pre><code>import 'package:streakkit/streakkit.dart';
+
+// Initialize
+StreakKit.init(key: "pk_live_your_key", userId: "user_123");
+
+// Record action
+await StreakKit.ping("daily_workout");
+
+// Deduct heart on wrong quiz answer
+await StreakKit.consumeHeart(count: 1);
+
+// Refill hearts using virtual gems
+await StreakKit.refillHearts(method: "GEMS");
+
+// Open winding path in any WebView
+final pathUrl = StreakKit.getDuolingoPathUrl("daily_workout", flag: "🏋️", unitTitle: "Strength");</code></pre>
+
+        <h3 id="sdk-react-native">React Native / Expo</h3>
+        <p>
+          Drop <a href="file:///packages/sdk-react-native/src/useStreakKit.ts"><code>useStreakKit.ts</code></a> into your React Native or Expo project:
+        </p>
+        <pre><code>import { StreakKit, useStreak } from './useStreakKit';
+
+StreakKit.init({ publicKey: "pk_live_your_key", userId: "user_123" });
+
+export function HabitCard() {
+  const { currentStreak, isActiveToday, ping } = useStreak("daily_reading");
+
+  return (
+    &lt;TouchableOpacity onPress={() => ping()}&gt;
+      &lt;Text&gt;📖 {currentStreak} Day Streak {isActiveToday ? "✓" : ""}&lt;/Text&gt;
+    &lt;/TouchableOpacity&gt;
+  );
+}</code></pre>
+      </section>
+
+      <!-- Section: Core Engine -->
+      <section id="core-engine">
+        <h2>Core Engine Mechanics</h2>
+
+        <h3 id="rules-auto-sync">Code-First Rule Auto-Provisioning</h3>
+        <p>
+          Whenever <code>StreakKit.ping()</code> is called with an optional <code>ruleConfig</code> object, the server creates or updates the rule automatically. You never have to seed a database or maintain configuration dashboards.
+        </p>
+
+        <h3 id="timezone-grace">Timezone Math & Midnight Grace Periods</h3>
+        <p>
+          To prevent users from losing streaks because they studied or exercised at 12:30 AM, StreakKit calculates the <strong>Logical Local Date</strong> by subtracting a configurable grace period:
+        </p>
+        <pre><code>ShiftedTimestamp = occurredAtUtc - (gracePeriodMinutes × 60 × 1000)
+LogicalDate = Intl.DateTimeFormat(userTimezone, ShiftedTimestamp)</code></pre>
+        <p>
+          With <code>gracePeriodMinutes = 120</code> (default), any activity completed between 12:00 AM and 02:00 AM Tuesday is mathematically attributed to Monday, saving the user's habit loop.
+        </p>
+
+        <h3 id="days-off">Rest Days (<code>daysOff</code>)</h3>
+        <p>
+          Habits that should not run on weekends or religious days can declare <code>daysOff</code> (e.g. <code>[0]</code> for Sunday, <code>[5]</code> for Friday, or <code>[0, 6]</code> for weekends). On these days, streaks do not break, and safety freezes are never consumed.
+        </p>
+
+        <h3 id="freezes">Safety Freezes & Auto-Earn Milestones</h3>
+        <p>
+          Users start with a configurable number of freezes (default: <code>maxFreezes = 2</code>). If a non-exempt day is missed, a freeze is consumed automatically to protect the streak. If configured with <code>freezeAutoEarnDays = 7</code>, the user automatically earns +1 safety freeze for every 7 consecutive streak days (capped at <code>maxFreezes</code>).
+        </p>
+
+        <h3 id="streak-amnesty">Streak Amnesty (Churn Reclamation)</h3>
+        <p>
+          When a user who had a 14+ day streak misses several days, they often churn due to feeling their hard work was wiped out. StreakKit automatically triggers a <strong>Streak Amnesty</strong> flow if the user has been dormant for 14–90 days:
+        </p>
+        <ul>
+          <li><code>POST /v1/streak/amnesty/evaluate</code> — Checks if a dormant user qualifies for amnesty.</li>
+          <li><code>POST /v1/streak/amnesty/claim</code> — Atomically restores their broken streak (e.g. 14 days) on their first new activity, bypassing the 0-day reset.</li>
+        </ul>
+
+        <h3 id="flame-tiers">4-Tier Flame Evolution</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Streak Days</th>
+                <th>Flame Theme</th>
+                <th>Glow Color</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Bronze Ember</strong></td>
+                <td>1 – 6 Days</td>
+                <td>Amber Gold (<code>#f59e0b</code>)</td>
+                <td>Gold halo</td>
+              </tr>
+              <tr>
+                <td><strong>Sapphire Flame</strong></td>
+                <td>7 – 13 Days</td>
+                <td>Cyan Blue (<code>#38bdf8</code>)</td>
+                <td>Cyan neon</td>
+              </tr>
+              <tr>
+                <td><strong>Amethyst Nova</strong></td>
+                <td>14 – 29 Days</td>
+                <td>Purple Violet (<code>#c084fc</code>)</td>
+                <td>Violet electric</td>
+              </tr>
+              <tr>
+                <td><strong>Solar Obsidian</strong></td>
+                <td>30+ Days</td>
+                <td>Solar White (<code>#e2e8f0</code>)</td>
+                <td>Diamond prism glow</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="anti-cheat">Monotonic Clock & Anti-Cheat Protection</h3>
+        <p>
+          StreakKit collects <code>monotonicMs</code> (from <code>SystemClock.elapsedRealtime()</code> or <code>performance.now()</code>) along with wall-clock time. If a user moves their device clock forward to fake a streak, monotonic skew detection flags the event as <code>CLOCK_SKEW_SUSPECTED</code> and clamps timestamps to current server time.
+        </p>
+      </section>
+
+      <!-- Section: Duolingo-in-a-Box -->
+      <section id="duolingo-in-a-box">
+        <h2>Duolingo-in-a-Box Gamification Engine</h2>
+        <p>
+          StreakKit includes the complete gamification model popularized by Duolingo, fully implemented as a headless domain engine and a drop-in S-curve Winding Path UI:
+        </p>
+
+        <h3>❤️ Hearts / Lives & 4-Hour Auto-Refill Math</h3>
+        <p>
+          Users start with <code>5/5 Hearts</code>. Each mistake or wrong answer deducts 1 heart. When hearts reach 0, <code>outOfHearts: true</code> is returned. Hearts auto-refill at a rate of <strong>1 heart every 4 hours (240 minutes)</strong>:
+        </p>
+        <ul>
+          <li>Auto-refill math is evaluated on read (zero background cron jobs needed).</li>
+          <li>Exact countdown timers (<code>secondsUntilNextRefill</code>, <code>secondsUntilFullRefill</code>) are returned in every status response.</li>
+          <li>Hearts can be refilled immediately with <code>GEMS</code> (50 gems for full refill), <code>PRACTICE</code> (+1 heart), or rewarded <code>AD</code> (+1 heart).</li>
+        </ul>
+
+        <h3 id="gems-ledger">💎 Virtual Gems Ledger</h3>
+        <p>
+          Each user has a virtual gem balance (default start: 50 gems). Gems can be awarded for milestones, spent on streak repairs or heart refills, or transacted via <code>POST /v1/gamification/gems/transaction</code>.
+        </p>
+
+        <h3 id="daily-xp">🚩 Daily XP Goal (0/20 XP)</h3>
+        <p>
+          Tracks daily progress (e.g. <code>0/20 XP</code>). Resets automatically at local midnight. When the user crosses their daily goal for the first time on any day, StreakKit automatically awards <strong>+10 bonus Gems</strong>.
+        </p>
+
+        <h3 id="winding-path-ui">🗺️ Universal Duolingo Winding Path Embed UI</h3>
+        <p>
+          Serve the full Duolingo home screen in any mobile app with one URL:
+        </p>
+        <pre><code>GET /v1/embed/path/:ruleSlug/:externalUserId?flag=🇳🇬&unitTitle=Greetings&unitSubtitle=Say%20hello</code></pre>
+        <ul>
+          <li><strong>Top Bar:</strong> Language flag, 🔥 Streak count, 💎 Gems balance, ❤️ Hearts count with live refill timer, and ⚙️ settings.</li>
+          <li><strong>Daily Goal Card:</strong> <code>🚩 Daily goal · 0/20 XP</code> with animated progress fill bar.</li>
+          <li><strong>Unit Banner:</strong> <code>UNIT 1 · 0/4 Greetings</code> with interactive guidebook button.</li>
+          <li><strong>Winding S-Curve Nodes:</strong> Avatar illustration, pulsing <code>START</code> button, active 3D star node, locked chest nodes, and <strong>Out of Hearts</strong> refill modal.</li>
+        </ul>
+      </section>
+
+      <!-- Section: Behavioral Psychology -->
+      <section id="retention-moats">
+        <h2>Retention Moats & Notifications</h2>
+
+        <h3 id="behavioral-contrast">Behavioral Contrast Nudges</h3>
+        <p>
+          StreakKit evaluates psychological contrast between leisurely distraction and neglected habits. It supports 4 psychological archetypes:
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Archetype</th>
+                <th>Psychological Trigger</th>
+                <th>Example Generated Copy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>GUILT_PRIORITY</strong></td>
+                <td>Time disparity on leisure vs habit</td>
+                <td><em>"You spent 45m listening to music, but didn't protect your Quran/lesson streak today?"</em></td>
+              </tr>
+              <tr>
+                <td><strong>MOMENTUM_PIVOT</strong></td>
+                <td>Transforming passive scrolling into action</td>
+                <td><em>"Since you're active right now, take 90 seconds to keep your 12-day streak alive."</em></td>
+              </tr>
+              <tr>
+                <td><strong>IDENTITY_MIRROR</strong></td>
+                <td>Reminding user of their stated identity</td>
+                <td><em>"You're someone with a 21-day streak. Don't let today be the day you drop the ball."</em></td>
+              </tr>
+              <tr>
+                <td><strong>TIME_TRADE</strong></td>
+                <td>Comparing duration of activity vs habit</td>
+                <td><em>"That 30m gaming session took 10× longer than the 3m needed to save your streak."</em></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="red-chronometer">Live Red Chronometer Notification</h3>
+        <p>
+          Android notifications use native <code>setUsesChronometer(true)</code> to display a ticking red countdown clock (<code>⏳ 01:42:15 remaining</code>) in the notification shade, replicating Duolingo's high-urgency panic alerts.
+        </p>
+
+        <h3 id="calendar-ui">Duolingo-Grade Month Calendar Grid</h3>
+        <p>
+          The embed UI and headless API (<code>GET /v1/streaks/:ruleSlug/:userId/calendar</code>) output month-by-month grid models with gold flame badges for completed days, cyan ice crystals for frozen days, pause indicators, and <strong>✨ Perfect Week</strong> banners (7/7 days active).
+        </p>
+
+        <h3 id="audio-synth">Procedural Web Audio Dopamine Synthesizer</h3>
+        <p>
+          StreakKit synthesizes triumphant ascending chords and frost shimmers in real-time via the browser's Web Audio API. It requires <strong>zero audio asset downloads</strong> (no .mp3 or .wav files) and works completely offline.
+        </p>
+      </section>
+
+      <!-- Section: REST API Reference -->
+      <section id="api-reference">
+        <h2>REST API Reference</h2>
+
+        <h3 id="api-auth">Authentication & Base URL</h3>
+        <p>
+          Pass your public or secret API key as a Bearer token in the <code>Authorization</code> header:
+        </p>
+        <pre><code>Authorization: Bearer pk_live_your_public_key</code></pre>
+
+        <h3 id="api-ping"><code>POST /v1/ping</code> — Record Activity</h3>
+        <p>
+          Advances streak progress, auto-creates rule if absent, evaluates midnight grace periods, and returns the full streak state in a single roundtrip.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>ruleSlug</code></td><td>string</td><td>Yes</td><td>Identifier of the streak rule (e.g. <code>daily_reading</code>)</td></tr>
+              <tr><td><code>externalUserId</code></td><td>string</td><td>Yes</td><td>End-user identifier in your system</td></tr>
+              <tr><td><code>value</code></td><td>number</td><td>No</td><td>Progress value (default: <code>1</code>)</td></tr>
+              <tr><td><code>timezone</code></td><td>string</td><td>No</td><td>IANA Timezone (e.g. <code>Africa/Lagos</code>, <code>America/New_York</code>)</td></tr>
+              <tr><td><code>ruleConfig</code></td><td>object</td><td>No</td><td>Optional rule parameters to auto-provision without a dashboard</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Response Schema:</h3>
+        <pre><code>{
+  "ruleSlug": "daily_reading",
+  "currentStreak": 14,
+  "highestStreak": 21,
+  "status": "ACTIVE_TODAY",
+  "todayProgress": { "current": 1, "target": 1, "completed": true },
+  "freezes": { "available": 2, "max": 3 },
+  "timing": {
+    "currentLogicalDate": "2026-11-08",
+    "secondsUntilExpiry": 43200,
+    "isExemptToday": false
+  },
+  "embedUrl": "https://api.streakkit.dev/v1/embed/daily_reading/user_123"
+}</code></pre>
+
+        <h3 id="api-state"><code>GET /v1/streaks/:ruleSlug/:externalUserId</code> — Query State</h3>
+        <p>
+          Returns the user's current streak, history, freezes, and expiry timer without mutating state.
+        </p>
+
+        <h3 id="api-gamification">Gamification Endpoints</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/gamification/:userId</code></td>
+                <td>Returns Hearts count, refill countdown timer, Gems balance, and Daily XP progress.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/gamification/hearts/consume</code></td>
+                <td>Deducts 1 or more hearts on mistake. Flags <code>outOfHearts: true</code> when 0.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/gamification/hearts/refill</code></td>
+                <td>Refills hearts via <code>GEMS</code> (50 gems), <code>PRACTICE</code> (+1), or <code>AD</code> (+1).</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/gamification/xp/add</code></td>
+                <td>Awards XP. Awards +10 bonus Gems when crossing the 20 XP daily goal.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/gamification/gems/transaction</code></td>
+                <td>Awards or spends virtual gems in the user's balance.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="api-moats">Moat & Recovery Endpoints</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/restore</code></td>
+                <td>Free / developer repair restoring a broken streak up to 90 days after loss.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/repair-verify</code></td>
+                <td>Verifies Google Play / App Store IAP receipt to restore streak atomically.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/amnesty/evaluate</code></td>
+                <td>Checks if dormant user qualifies for 48-hour streak resurrection campaign.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/amnesty/claim</code></td>
+                <td>Resurrects broken streak for returning churned users without resetting to 0.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/pause</code></td>
+                <td>Schedules a vacation pause date range (e.g. Ramadan, holiday, surgery).</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/streak/friends</code></td>
+                <td>Batch streak query returning sorted rankings for a list of friend user IDs.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/streak/wrapped</code></td>
+                <td>Spotify-style annual review (days active, longest streak, peak month, percentile).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="api-embed">Embed UI Endpoints</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/embed/:ruleSlug/:userId</code></td>
+                <td>Standard dopamine streak modal (Lottie flame, month calendar, audio synth, share).</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/embed/path/:ruleSlug/:userId</code></td>
+                <td>Full Duolingo Winding Path (Top bar with Flag + Streak + Gems + Hearts, Daily XP goal, Unit banner, S-curve nodes).</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/embed/:ruleSlug/:userId/calendar</code></td>
+                <td>Headless month calendar JSON for native Compose / SwiftUI / Flutter grid rendering.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer>
+        <div>StreakKit is open-source under the MIT License · Built for Hyper-Retention.</div>
+        <div>Tested and verified with <strong>68/68 automated tests</strong>.</div>
+      </footer>
+
+    </main>
+  </div>
 
   <script>
-    function switchTab(platform) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('tab-' + platform).classList.add('active');
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('open');
     }
+
+    function switchCodeTab(panelId, btn) {
+      const parent = btn.parentElement;
+      parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const container = parent.parentElement;
+      container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(panelId).classList.add('active');
+    }
+
+    // Highlight active sidebar item on scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section[id], h3[id]');
+      let currentId = '';
+      sections.forEach(s => {
+        const top = s.getBoundingClientRect().top;
+        if (top <= 120) currentId = s.id;
+      });
+      if (currentId) {
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+          if (item.getAttribute('href') === '#' + currentId) {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+      }
+    });
   </script>
 </body>
 </html>
