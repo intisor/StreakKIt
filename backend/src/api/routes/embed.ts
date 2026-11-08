@@ -694,7 +694,6 @@ function renderEmbedHtml(
       font-size: 64px;
       line-height: 1;
       filter: drop-shadow(var(--streak-glow));
-      animation: float 2.5s ease-in-out infinite;
     }
     #lottie-container {
       width: 100%;
@@ -1867,11 +1866,6 @@ function renderDuolingoPathHtml(params: {
       border-radius: 14px;
       margin-bottom: 10px;
       cursor: pointer;
-      animation: bounce 1.8s infinite ease-in-out;
-    }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
     }
     .node-ring {
       padding: 8px;
