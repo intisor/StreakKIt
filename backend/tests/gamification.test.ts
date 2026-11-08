@@ -161,4 +161,52 @@ describe('Duolingo-in-a-Box Gamification Engine (Hearts, Gems, Daily XP & Windin
     assert.ok(html.includes('Greetings'));
     assert.ok(html.includes('START'));
   });
+
+  it('6. Supports full customizability: POST /v1/gamification/config and URL query overrides', async () => {
+    const userId = `custom_user_${Date.now()}`;
+
+    // Customize user gamification params: 3 hearts max, 50 XP daily target, 30 min refill, 150 gems
+    const configRes = await app.inject({
+      method: 'POST',
+      url: '/v1/gamification/config',
+      headers: authHeader,
+      payload: {
+        userId,
+        heartsMax: 3,
+        heartsCurrent: 3,
+        heartsRefillIntervalMinutes: 30,
+        gemsBalance: 150,
+        xpTargetDaily: 50
+      }
+    });
+    assert.equal(configRes.statusCode, 200);
+    const configuredState = configRes.json();
+    assert.equal(configuredState.hearts.max, 3);
+    assert.equal(configuredState.hearts.current, 3);
+    assert.equal(configuredState.gems.balance, 150);
+    assert.equal(configuredState.xp.targetDaily, 50);
+
+    // Verify GET /v1/gamification/:userId returns the customized settings
+    const getRes = await app.inject({
+      method: 'GET',
+      url: `/v1/gamification/${userId}`,
+      headers: authHeader
+    });
+    assert.equal(getRes.statusCode, 200);
+    const fetchedState = getRes.json();
+    assert.equal(fetchedState.hearts.max, 3);
+    assert.equal(fetchedState.xp.targetDaily, 50);
+    assert.equal(fetchedState.gems.balance, 150);
+
+    // Verify embed URL query parameter overrides (?dailyTarget=100&maxHearts=10&gemCost=25)
+    const embedRes = await app.inject({
+      method: 'GET',
+      url: `/v1/embed/path/daily_tailor_log/${userId}?dailyTarget=100&maxHearts=10&gemCost=25`,
+    });
+    assert.equal(embedRes.statusCode, 200);
+    const html = embedRes.body;
+    assert.ok(html.includes('Daily goal · <span id="xpVal">0</span>/100 XP'));
+    assert.ok(html.includes('/10</div>'));
+    assert.ok(html.includes('Refill Full Hearts (25 Gems)'));
+  });
 });

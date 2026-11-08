@@ -250,4 +250,33 @@ class StreakKit {
     } catch (_) {}
     return null;
   }
+
+  /// Customizes gamification settings for a user/tenant (e.g. max hearts, refill interval, daily XP target).
+  static Future<Map<String, dynamic>?> configureGamification({
+    int? heartsMax,
+    int? heartsCurrent,
+    int? heartsRefillIntervalMinutes,
+    int? gemsBalance,
+    int? xpTargetDaily,
+    String? userId,
+  }) async {
+    final uid = userId ?? currentUserId;
+    final url = Uri.parse("${endpoint.replaceAll(RegExp(r'/+$'), '')}/v1/gamification/config");
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Authorization": "Bearer $publicKey", "Content-Type": "application/json"},
+        body: jsonEncode({
+          "userId": uid,
+          if (heartsMax != null) "heartsMax": heartsMax,
+          if (heartsCurrent != null) "heartsCurrent": heartsCurrent,
+          if (heartsRefillIntervalMinutes != null) "heartsRefillIntervalMinutes": heartsRefillIntervalMinutes,
+          if (gemsBalance != null) "gemsBalance": gemsBalance,
+          if (xpTargetDaily != null) "xpTargetDaily": xpTargetDaily,
+        }),
+      );
+      if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {}
+    return null;
+  }
 }

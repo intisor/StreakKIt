@@ -360,6 +360,9 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         unitTitle?: string;
         unitSubtitle?: string;
         totalLessons?: string;
+        dailyTarget?: string;
+        maxHearts?: string;
+        gemCost?: string;
       };
 
       const db = getDb();
@@ -465,6 +468,24 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         nowUtc.getTime()
       );
 
+      // Support dynamic URL query parameter overrides for complete tenant customizability
+      if (query.dailyTarget) {
+        const parsedTarget = parseInt(query.dailyTarget, 10);
+        if (!isNaN(parsedTarget) && parsedTarget > 0) {
+          gamification.xp.targetDaily = parsedTarget;
+          gamification.xp.dailyGoalCompleted = gamification.xp.today >= parsedTarget;
+        }
+      }
+      if (query.maxHearts) {
+        const parsedMax = parseInt(query.maxHearts, 10);
+        if (!isNaN(parsedMax) && parsedMax > 0) {
+          gamification.hearts.max = parsedMax;
+          gamification.hearts.current = Math.min(gamification.hearts.current, parsedMax);
+        }
+      }
+
+      const parsedGemCost = query.gemCost ? parseInt(query.gemCost, 10) : 50;
+
       const pathHtml = renderDuolingoPathHtml({
         ruleSlug: rule.slug,
         ruleName: rule.name,
@@ -476,7 +497,8 @@ export async function registerEmbedRoutes(fastify: FastifyInstance) {
         flagEmoji: query.flag || '🇳🇬',
         unitTitle: query.unitTitle || 'Greetings',
         unitSubtitle: query.unitSubtitle || 'Say hello and introduce yourself',
-        totalLessons: query.totalLessons ? parseInt(query.totalLessons, 10) : 4
+        totalLessons: query.totalLessons ? parseInt(query.totalLessons, 10) : 4,
+        gemCost: isNaN(parsedGemCost) ? 50 : parsedGemCost
       });
 
       return reply.type('text/html').send(pathHtml);
@@ -1647,6 +1669,7 @@ function renderDuolingoPathHtml(params: {
   unitTitle: string;
   unitSubtitle: string;
   totalLessons: number;
+  gemCost?: number;
 }): string {
   const {
     ruleSlug,
@@ -1658,7 +1681,8 @@ function renderDuolingoPathHtml(params: {
     flagEmoji,
     unitTitle,
     unitSubtitle,
-    totalLessons
+    totalLessons,
+    gemCost = 50
   } = params;
 
   const unitCompleted = Math.min(
@@ -2002,7 +2026,7 @@ function renderDuolingoPathHtml(params: {
       <div style="font-size:44px;margin-bottom:6px;">❤️ <span id="modalHeartsCount">${gamification.hearts.current}</span>/${gamification.hearts.max}</div>
       <div class="modal-title" id="heartsModalTitle">${gamification.hearts.outOfHearts ? 'You ran out of hearts!' : 'Hearts keep you in the lesson'}</div>
       <div class="modal-desc">Each mistake costs 1 heart. Refill instantly with Gems or practice a quick review to earn +1 heart.</div>
-      <button class="duo-btn duo-btn-blue" onclick="refillHearts('GEMS')">💎 Refill Full Hearts (50 Gems)</button>
+      <button class="duo-btn duo-btn-blue" onclick="refillHearts('GEMS')">💎 Refill Full Hearts (${gemCost} Gems)</button>
       <button class="duo-btn duo-btn-green" onclick="refillHearts('PRACTICE')">🏋️ Practice to Earn +1 ❤️</button>
       <button class="duo-btn duo-btn-ghost" onclick="closeModals()">Close</button>
     </div>
@@ -2013,6 +2037,7 @@ function renderDuolingoPathHtml(params: {
     var USER_ID = ${JSON.stringify(externalUserId)};
     var RULE_SLUG = ${JSON.stringify(ruleSlug)};
     var TIMEZONE = ${JSON.stringify(timezone)};
+    var GEM_COST = ${gemCost};
 
     function openLessonModal(lessonNum) {
       var hearts = parseInt(document.getElementById('heartsVal').textContent || '0', 10);
@@ -2104,6 +2129,7 @@ function renderDuolingoPathHtml(params: {
         body: JSON.stringify({
           userId: USER_ID,
           method: method,
+          gemCost: method === 'GEMS' ? GEM_COST : undefined,
           timezone: TIMEZONE
         })
       })

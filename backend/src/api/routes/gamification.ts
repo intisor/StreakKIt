@@ -181,4 +181,51 @@ export async function registerGamificationRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  /**
+   * POST /v1/gamification/config
+   * Customizes user/tenant gamification parameters:
+   * - heartsMax (e.g. 3 for hard quizzes, 10 for kids, 999 for VIPs)
+   * - heartsCurrent
+   * - heartsRefillIntervalMinutes (e.g. 30m vs 240m)
+   * - gemsBalance
+   * - xpTargetDaily (e.g. 50 XP vs 20 XP)
+   */
+  fastify.post(
+    '/v1/gamification/config',
+    { preHandler: authenticateApiKey },
+    async (request: AuthenticatedRequest, reply: FastifyReply) => {
+      const tenant = request.tenant!;
+      const body = request.body as {
+        userId: string;
+        heartsMax?: number;
+        heartsCurrent?: number;
+        heartsRefillIntervalMinutes?: number;
+        gemsBalance?: number;
+        xpTargetDaily?: number;
+        timezone?: string;
+      };
+
+      if (!body || !body.userId) {
+        return reply.status(400).send({ error: 'Missing required parameter: userId' });
+      }
+
+      const db = getDb();
+      const service = new GamificationService(db);
+      const status = await service.updateConfig(
+        tenant.id,
+        body.userId,
+        {
+          heartsMax: body.heartsMax,
+          heartsCurrent: body.heartsCurrent,
+          heartsRefillIntervalMinutes: body.heartsRefillIntervalMinutes,
+          gemsBalance: body.gemsBalance,
+          xpTargetDaily: body.xpTargetDaily
+        },
+        body.timezone || 'UTC'
+      );
+
+      return reply.status(200).send(status);
+    }
+  );
 }

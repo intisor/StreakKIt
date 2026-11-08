@@ -180,6 +180,34 @@ class StreakKitClient {
     } catch (_) {}
     return null;
   }
+
+  /**
+   * Customizes user/tenant gamification parameters (heartsMax, xpTargetDaily, refillInterval, etc.)
+   */
+  async configureGamification(
+    config: {
+      heartsMax?: number;
+      heartsCurrent?: number;
+      heartsRefillIntervalMinutes?: number;
+      gemsBalance?: number;
+      xpTargetDaily?: number;
+    },
+    userId?: string
+  ): Promise<any | null> {
+    const uid = userId || this.userId;
+    try {
+      const res = await fetch(`${this.endpoint}/v1/gamification/config`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.publicKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: uid, ...config }),
+      });
+      if (res.ok) return await res.json();
+    } catch (_) {}
+    return null;
+  }
 }
 
 export const StreakKit = new StreakKitClient();

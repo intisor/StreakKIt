@@ -838,6 +838,16 @@ LogicalDate = Intl.DateTimeFormat(userTimezone, ShiftedTimestamp)</code></pre>
           <li><strong>Unit Banner:</strong> <code>UNIT 1 · 0/4 Greetings</code> with interactive guidebook button.</li>
           <li><strong>Winding S-Curve Nodes:</strong> Avatar illustration, pulsing <code>START</code> button, active 3D star node, locked chest nodes, and <strong>Out of Hearts</strong> refill modal.</li>
         </ul>
+
+        <h3 id="gamification-customization">⚙️ 100% Dynamic & Customizable (Zero Hardcoding)</h3>
+        <p>
+          Nothing is hardcoded. Every single parameter—max hearts, daily XP target, refill interval, gem refill costs—is fully customizable at runtime across 3 layers:
+        </p>
+        <ol>
+          <li><strong>Per-User / Tenant Configuration API:</strong> Call <code>POST /v1/gamification/config</code> or SDK <code>configureGamification(...)</code> to set custom <code>heartsMax</code> (e.g. 3 for hard quizzes, 10 for kids, 999 for VIPs), <code>heartsRefillIntervalMinutes</code> (e.g. 30m vs 4 hours), and <code>xpTargetDaily</code> (e.g. 50 XP vs 20 XP).</li>
+          <li><strong>Dynamic URL Embed Overrides:</strong> When loading <code>/v1/embed/path/:ruleSlug/:userId</code>, pass query parameters like <code>?dailyTarget=50&maxHearts=10&gemCost=30</code> to immediately customize the UI without touching the database.</li>
+          <li><strong>Per-Event Overrides:</strong> When sending XP events via <code>POST /v1/gamification/xp/add</code>, provide <code>dailyTargetOverride</code> to alter the goal on the fly.</li>
+        </ol>
       </section>
 
       <!-- Section: Behavioral Psychology -->
@@ -979,6 +989,11 @@ LogicalDate = Intl.DateTimeFormat(userTimezone, ShiftedTimestamp)</code></pre>
                 <td><span class="badge-method method-post">POST</span></td>
                 <td><code>/v1/gamification/gems/transaction</code></td>
                 <td>Awards or spends virtual gems in the user's balance.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-post">POST</span></td>
+                <td><code>/v1/gamification/config</code></td>
+                <td>Customizes heartsMax, heartsRefillIntervalMinutes, gemsBalance, and xpTargetDaily.</td>
               </tr>
             </tbody>
           </table>

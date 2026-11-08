@@ -32,6 +32,14 @@ export interface GamificationStatusDTO {
   curriculumProgress: Record<string, number>;
 }
 
+export interface GamificationConfigInput {
+  heartsMax?: number;
+  heartsCurrent?: number;
+  heartsRefillIntervalMinutes?: number;
+  gemsBalance?: number;
+  xpTargetDaily?: number;
+}
+
 /**
  * Pure function to evaluate auto-refilled hearts based on elapsed time since last consumption.
  */
@@ -396,6 +404,44 @@ export class GamificationService {
            updated_at = $2
        WHERE id = $3`,
       [nextBalance, new Date().toISOString(), row.id]
+    );
+
+    return this.getStatus(tenantId, externalUserId, timezone);
+  }
+
+  async updateConfig(
+    tenantId: string,
+    externalUserId: string,
+    config: GamificationConfigInput,
+    timezone: string = 'UTC'
+  ): Promise<GamificationStatusDTO> {
+    const logicalDate = resolveLocalLogicalDate(timezone);
+    const row = await this.ensureUserRow(tenantId, externalUserId, logicalDate);
+
+    const heartsMax = config.heartsMax !== undefined ? Math.max(1, config.heartsMax) : Number(row.hearts_max);
+    const heartsCurrent = config.heartsCurrent !== undefined
+      ? Math.min(heartsMax, Math.max(0, config.heartsCurrent))
+      : Math.min(heartsMax, Number(row.hearts_current));
+    const intervalMin = config.heartsRefillIntervalMinutes !== undefined
+      ? Math.max(1, config.heartsRefillIntervalMinutes)
+      : Number(row.hearts_refill_interval_minutes);
+    const gemsBalance = config.gemsBalance !== undefined
+      ? Math.max(0, config.gemsBalance)
+      : Number(row.gems_balance);
+    const xpTargetDaily = config.xpTargetDaily !== undefined
+      ? Math.max(1, config.xpTargetDaily)
+      : Number(row.xp_target_daily);
+
+    await this.db.execute(
+      `UPDATE user_gamification
+       SET hearts_max = $1,
+           hearts_current = $2,
+           hearts_refill_interval_minutes = $3,
+           gems_balance = $4,
+           xp_target_daily = $5,
+           updated_at = $6
+       WHERE id = $7`,
+      [heartsMax, heartsCurrent, intervalMin, gemsBalance, xpTargetDaily, new Date().toISOString(), row.id]
     );
 
     return this.getStatus(tenantId, externalUserId, timezone);

@@ -750,7 +750,10 @@ object StreakKit {
         userId: String = "user_default",
         flag: String = "🇳🇬",
         unitTitle: String = "Greetings",
-        unitSubtitle: String = "Say hello and introduce yourself"
+        unitSubtitle: String = "Say hello and introduce yourself",
+        dailyTarget: Int? = null,
+        maxHearts: Int? = null,
+        gemCost: Int? = null
     ) {
         activity.runOnUiThread {
             val dialog = BottomSheetDialog(activity)
@@ -766,7 +769,11 @@ object StreakKit {
                 val f = URLEncoder.encode(flag, "UTF-8")
                 val ut = URLEncoder.encode(unitTitle, "UTF-8")
                 val us = URLEncoder.encode(unitSubtitle, "UTF-8")
-                loadUrl("${endpoint.trimEnd('/')}/v1/embed/path/$ruleSlug/$userId?timezone=$tz&flag=$f&unitTitle=$ut&unitSubtitle=$us")
+                var pathUrl = "${endpoint.trimEnd('/')}/v1/embed/path/$ruleSlug/$userId?timezone=$tz&flag=$f&unitTitle=$ut&unitSubtitle=$us"
+                if (dailyTarget != null) pathUrl += "&dailyTarget=$dailyTarget"
+                if (maxHearts != null) pathUrl += "&maxHearts=$maxHearts"
+                if (gemCost != null) pathUrl += "&gemCost=$gemCost"
+                loadUrl(pathUrl)
             }
             dialog.setContentView(webView)
             dialog.show()
@@ -867,6 +874,47 @@ object StreakKit {
                 val goalDone = xpObj?.optBoolean("dailyGoalCompleted", false) ?: false
                 val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
                 mainHandler.post { onResult?.invoke(xpToday, goalDone, gems) }
+            }
+        })
+    }
+
+    /**
+     * Customizes gamification settings for a user/tenant (e.g. max hearts, refill interval, daily XP target).
+     * Nothing is hardcoded — developers can adapt this per student, subscription tier, or game mode.
+     */
+    fun configureGamification(
+        userId: String = "user_default",
+        heartsMax: Int? = null,
+        heartsCurrent: Int? = null,
+        heartsRefillIntervalMinutes: Int? = null,
+        gemsBalance: Int? = null,
+        xpTargetDaily: Int? = null,
+        onResult: ((heartsMax: Int, xpTargetDaily: Int, gemsBalance: Int) -> Unit)? = null
+    ) {
+        val body = JSONObject().apply {
+            put("userId", userId)
+            if (heartsMax != null) put("heartsMax", heartsMax)
+            if (heartsCurrent != null) put("heartsCurrent", heartsCurrent)
+            if (heartsRefillIntervalMinutes != null) put("heartsRefillIntervalMinutes", heartsRefillIntervalMinutes)
+            if (gemsBalance != null) put("gemsBalance", gemsBalance)
+            if (xpTargetDaily != null) put("xpTargetDaily", xpTargetDaily)
+            put("timezone", TimeZone.getDefault().id)
+        }
+        val req = Request.Builder()
+            .url("${endpoint.trimEnd('/')}/v1/gamification/config")
+            .header("Authorization", "Bearer $publicKey")
+            .header("Content-Type", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        httpClient.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                val json = try { JSONObject(response.body?.string() ?: "{}") } catch (_: Exception) { JSONObject() }
+                val max = json.optJSONObject("hearts")?.optInt("max", 5) ?: 5
+                val target = json.optJSONObject("xp")?.optInt("targetDaily", 20) ?: 20
+                val gems = json.optJSONObject("gems")?.optInt("balance", 0) ?: 0
+                mainHandler.post { onResult?.invoke(max, target, gems) }
             }
         })
     }
