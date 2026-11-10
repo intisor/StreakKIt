@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { buildServer } from '../src/server.js';
 import { getDb } from '../src/config/db.js';
 import { seedDatabase } from '../src/db/seed.js';
+import { computeLogicalDate } from '../src/domain/time-window.js';
 
 describe('StreakKit E2E API Integration', () => {
   let server: any;
@@ -402,8 +403,10 @@ describe('StreakKit E2E API Integration', () => {
     const flightUser = `flight_traveler_${crypto.randomUUID().slice(0, 8)}`;
     const eventId = crypto.randomUUID();
 
-    // Event occurred in London at 23:45 PM before midnight
-    const occurredInLondonUtc = '2026-11-06T23:45:00.000Z';
+    // Event occurred in London just now
+    const nowUtc = new Date();
+    const occurredInLondonUtc = nowUtc.toISOString();
+    const londonDate = computeLogicalDate(nowUtc, 'Europe/London');
 
     const res = await server.inject({
       method: 'POST',
@@ -433,8 +436,8 @@ describe('StreakKit E2E API Integration', () => {
     const state = body.states.hujjify_playback;
     assert.ok(state);
     assert.equal(state.currentStreak, 1);
-    // Verified 2026-11-06 is marked completed in rolling history
-    const completedDay = state.historyLast14Days.find((h: any) => h.date === '2026-11-06');
+    // Verified logical date is marked completed in rolling history
+    const completedDay = state.historyLast14Days.find((h: any) => h.date === londonDate);
     assert.equal(completedDay?.state, 'COMPLETED');
   });
 

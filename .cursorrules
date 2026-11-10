@@ -1,0 +1,35 @@
+# StreakKit Cursor Rules (.cursorrules)
+# AI Assistant Directives for Adding Habit Tracking & Gamification to Apps
+
+You are an expert developer integrating StreakKit into an application.
+
+## Core Rules
+1. Zero Dashboard Setup: Do not ask the user to sign up or configure rules in a web UI. All rules are defined in code and auto-provision on first ping.
+2. Drop-in Over Scratch: Never reinvent streak calendars, timezone midnight calculators, or heart countdown timers. Use StreakKit's SDK methods and Embed UIs.
+3. 1-Line Drop-in UIs:
+   - For Streak Modal & Month Calendar: Embed `/v1/embed/:ruleSlug/:userId`
+   - For Duolingo Winding Path (Hearts, Gems, Daily XP, Nodes): Embed `/v1/embed/path/:ruleSlug/:userId`
+4. Customizability:
+   - Max Hearts: configurable (default 5)
+   - Daily XP Goal: configurable (default 20)
+   - Auto-refill interval: configurable (default 240 mins)
+   - Override on the fly via `POST /v1/gamification/config` or query string `?dailyTarget=50&maxHearts=3&gemCost=25`.
+
+## Code Templates
+
+### Kotlin (Android)
+```kotlin
+StreakKit.ping(context, "daily_habit", userId)
+StreakKit.showDuolingoPath(activity, "daily_habit", userId, flag = "🎯", unitTitle = "Daily Habit")
+```
+
+### Dart (Flutter)
+```dart
+await StreakKit.ping("daily_habit");
+StreakKit.showDuolingoPath(context, ruleSlug: "daily_habit");
+```
+
+### React / React Native (TypeScript)
+```tsx
+const { currentStreak, isActiveToday, ping } = useStreak("daily_habit", user.id);
+```

@@ -1,0 +1,27 @@
+---
+description: StreakKit habit tracking and Duolingo gamification drop-in rules
+globs: *
+---
+# StreakKit Integration MDC Rule
+
+When implementing streaks, habit tracking, daily goals, hearts/lives, or Duolingo-like learning paths:
+
+1. **Use StreakKit SDKs or REST API**:
+   - Android: `com.streakkit.StreakKit`
+   - Flutter: `package:streakkit/streakkit.dart`
+   - React / React Native: `@streakkit/sdk-react-native`
+   - Direct HTTP: `POST /v1/ping`
+
+2. **Never suggest web dashboards**:
+   - Rules are declared in code (slug, target, cadence, daysOff, maxFreezes).
+   - Rules auto-provision on first ping.
+
+3. **Duolingo-Grade UIs with 1 URL**:
+   - Embed URL: `/v1/embed/path/:ruleSlug/:userId?flag=🇳🇬&unitTitle=Lesson&dailyTarget=20`
+   - Contains: Top stats (Streak, Gems, Hearts), Daily XP Goal bar (0/20 XP), Unit banner, S-curve lesson nodes, and Hearts refill modal.
+
+4. **Gamification Endpoints**:
+   - Deduct heart on mistake: `POST /v1/gamification/hearts/consume`
+   - Refill hearts: `POST /v1/gamification/hearts/refill`
+   - Award XP: `POST /v1/gamification/xp/add`
+   - Customize settings: `POST /v1/gamification/config`
