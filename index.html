@@ -537,6 +537,155 @@
         </div>
       </section>
 
+      <!-- Section: AI-Native & Agent Skills -->
+      <section id="ai-native-skills">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:12px;">
+          🤖 AI-NATIVE RETENTION INFRASTRUCTURE
+        </div>
+        <h2>AI Agent Skills (Claude Code, Cursor, Codex, Antigravity)</h2>
+        <p class="lead-text">
+          Modern software is built with AI coding agents. Legacy gamification and retention platforms (Trophy.so, Braze, OneSignal) fail because they force an autonomous AI to stop and prompt humans: <em>"Please sign in to the web dashboard, create a metric ID, configure rules, and paste an API key."</em>
+        </p>
+        <p>
+          StreakKit is <strong>100% AI-native</strong>. With zero web dashboards, auto-provisioning code-first rules, and 1-line drop-in UIs, an AI agent can build a complete habit system or Duolingo learning path in under 60 seconds without ever touching a web console.
+        </p>
+
+        <div class="feature-grid" style="margin:20px 0;">
+          <div class="feature-card">
+            <div class="feature-card-icon">⚡</div>
+            <div class="feature-card-title">Zero Dashboard Halts</div>
+            <div class="feature-card-desc">AI never gets blocked waiting for human console credentials or manual metric ID registration.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">🛠️</div>
+            <div class="feature-card-title">Auto-Provisioning in Code</div>
+            <div class="feature-card-desc">Rules, rest days, and auto-freeze policies declared in code auto-provision on first ping.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">🌍</div>
+            <div class="feature-card-title">Deterministic Timezones</div>
+            <div class="feature-card-desc">Prevents LLMs from writing brittle date/midnight logic across leap years and international flight drifts.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card-icon">🗺️</div>
+            <div class="feature-card-title">1-Line Embed UIs</div>
+            <div class="feature-card-desc">AI doesn't generate 500 lines of fragile canvas/SVG. A single URL delivers 60fps vector UIs.</div>
+          </div>
+        </div>
+
+        <h3>Install Agent Directives in 1 Click</h3>
+        <p>Select your AI coding assistant below to copy its system instructions or install its config file directly into your repository:</p>
+
+        <!-- AI Agent Tabs Header -->
+        <div class="tabs-header">
+          <button class="tab-btn active" onclick="switchCodeTab('agent-claude', this)">Claude Code (CLAUDE.md)</button>
+          <button class="tab-btn" onclick="switchCodeTab('agent-cursor', this)">Cursor (.cursorrules)</button>
+          <button class="tab-btn" onclick="switchCodeTab('agent-codex', this)">Codex & Copilot</button>
+          <button class="tab-btn" onclick="switchCodeTab('agent-antigravity', this)">Antigravity (SKILL.md)</button>
+          <button class="tab-btn" onclick="switchCodeTab('agent-universal', this)">Universal Prompt</button>
+        </div>
+
+        <!-- Tab 1: Claude Code -->
+        <div id="agent-claude" class="tab-panel active">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--text-muted);">Save to <code>CLAUDE.md</code> in project root, or install via terminal:</div>
+            <button class="btn-topbar btn-topbar-demo" onclick="copyPrompt('claude-prompt-text', this)">📋 Copy for Claude Code</button>
+          </div>
+          <pre><code id="claude-install">curl -fsSL https://intisor.github.io/StreakKIt/skills/claude.md > CLAUDE.md</code></pre>
+          <pre><code id="claude-prompt-text"># StreakKit Integration Directives for Claude Code
+- When asked to add streaks, daily goals, or gamification, use StreakKit.
+- Zero Web Dashboards: Never ask the human to create metrics or configure settings in a web UI.
+- Declare rules directly in application code (slug, target, cadence, daysOff, maxFreezes).
+- Rules auto-provision seamlessly on the first ping.
+- Drop-In UIs:
+  * Duolingo Winding Path (Hearts, Gems, Daily Goal): GET /v1/embed/path/:ruleSlug/:userId
+  * Flame Streak Modal & Month Calendar: GET /v1/embed/:ruleSlug/:userId
+- Gamification Endpoints:
+  * Deduct heart on mistake: POST /v1/gamification/hearts/consume
+  * Refill hearts: POST /v1/gamification/hearts/refill
+  * Award XP: POST /v1/gamification/xp/add
+  * Custom settings (hearts, refill interval, daily target): POST /v1/gamification/config</code></pre>
+        </div>
+
+        <!-- Tab 2: Cursor IDE -->
+        <div id="agent-cursor" class="tab-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--text-muted);">Save to <code>.cursorrules</code> or <code>.cursor/rules/streakkit.mdc</code>:</div>
+            <button class="btn-topbar btn-topbar-demo" onclick="copyPrompt('cursor-prompt-text', this)">📋 Copy for Cursor</button>
+          </div>
+          <pre><code id="cursor-install">curl -fsSL https://intisor.github.io/StreakKIt/skills/cursor.md > .cursorrules</code></pre>
+          <pre><code id="cursor-prompt-text">---
+description: StreakKit habit tracking and Duolingo gamification drop-in rules
+globs: *
+---
+# StreakKit Integration MDC Rule
+When implementing streaks, habit tracking, daily goals, hearts/lives, or learning paths:
+1. Use StreakKit SDKs (com.streakkit.StreakKit in Android, streakkit.dart in Flutter, useStreakKit in React Native).
+2. Zero Dashboards: Rules are declared in code and auto-provision on first ping.
+3. 1-Line Drop-in UIs:
+   - Duolingo Path: /v1/embed/path/:ruleSlug/:userId?flag=🇳🇬&unitTitle=Lesson&dailyTarget=20
+   - Streak Modal: /v1/embed/:ruleSlug/:userId
+4. Dynamic Customizability:
+   - Max hearts (default 5), daily XP target (default 20), refill interval (default 240m) are customizable.
+   - Override on the fly via query params: ?dailyTarget=50&maxHearts=3&gemCost=25</code></pre>
+        </div>
+
+        <!-- Tab 3: OpenAI Codex & Copilot -->
+        <div id="agent-codex" class="tab-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--text-muted);">Save to <code>.github/copilot-instructions.md</code>:</div>
+            <button class="btn-topbar btn-topbar-demo" onclick="copyPrompt('codex-prompt-text', this)">📋 Copy for Codex & Copilot</button>
+          </div>
+          <pre><code id="codex-install">curl -fsSL https://intisor.github.io/StreakKIt/skills/codex.md > .github/copilot-instructions.md</code></pre>
+          <pre><code id="codex-prompt-text"># GitHub Copilot & OpenAI Codex Instructions for StreakKit
+- StreakKit is a zero-dashboard, code-first retention and gamification engine.
+- Never write custom timezone calculation logic or midnight math.
+- Never construct custom streak calendar grids or bezier winding paths from scratch.
+- Use pre-built drop-in UIs:
+  * Duolingo Path: /v1/embed/path/:ruleSlug/:userId
+  * Flame Modal: /v1/embed/:ruleSlug/:userId
+- Gamification Endpoints:
+  * POST /v1/ping (advances streak, auto-provisions rule)
+  * POST /v1/gamification/hearts/consume (deducts 1 heart on error)
+  * POST /v1/gamification/hearts/refill (refills via gems/practice/ad)
+  * POST /v1/gamification/xp/add (adds XP, awards +10 gems on daily goal)
+  * POST /v1/gamification/config (customizes hearts, refill interval, daily target)</code></pre>
+        </div>
+
+        <!-- Tab 4: Antigravity -->
+        <div id="agent-antigravity" class="tab-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--text-muted);">Antigravity Agent Skill (<code>skills/streakkit/SKILL.md</code>):</div>
+            <button class="btn-topbar btn-topbar-demo" onclick="copyPrompt('anti-prompt-text', this)">📋 Copy Antigravity Skill</button>
+          </div>
+          <pre><code id="anti-install">curl -fsSL https://intisor.github.io/StreakKIt/skills/streakkit.md > skills/streakkit/SKILL.md</code></pre>
+          <pre><code id="anti-prompt-text">---
+name: streakkit
+description: "AI-native habit streaks, Duolingo-grade gamification (hearts, gems, daily XP), and retention drop-in UIs with zero dashboards. Use whenever adding streaks, daily goals, learning paths, or habit tracking to any mobile or web app."
+---
+# StreakKit AI Agent Skill
+- Zero-dashboard philosophy: all rules, targets, rest days, and freezes are declared in code.
+- Rules auto-provision on first ping.
+- Drop-in Embed UIs: /v1/embed/path/:ruleSlug/:userId (Duolingo Path) and /v1/embed/:ruleSlug/:userId (Streak Modal).
+- Pure dynamic gamification engine: Hearts, Gems, Daily XP goals with auto-refill countdown math.</code></pre>
+        </div>
+
+        <!-- Tab 5: Universal Prompt -->
+        <div id="agent-universal" class="tab-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--text-muted);">Paste into ChatGPT, Claude, DeepSeek, or Gemini:</div>
+            <button class="btn-topbar btn-topbar-demo" onclick="copyPrompt('universal-prompt-text', this)">📋 Copy Universal Prompt</button>
+          </div>
+          <pre><code id="universal-prompt-text">You are integrating StreakKit into this app. StreakKit is an open-source, code-first retention & habit engine with zero web dashboards.
+Directives:
+1. All rules, targets, rest days, and auto-freeze policies are defined in code.
+2. The backend auto-provisions rules on the first ping.
+3. Use the single drop-in SDK file (StreakKit.kt for Android, streakkit.dart for Flutter, useStreakKit for React Native) or REST API.
+4. For UI, embed /v1/embed/path/:ruleSlug/:userId for Duolingo Winding Path (Hearts, Gems, Daily XP) or /v1/embed/:ruleSlug/:userId for Flame Modal.
+5. Hearts, gems, and daily goals are fully customizable via POST /v1/gamification/config or URL query parameters.</code></pre>
+        </div>
+      </section>
+
       <!-- Section: Quickstart -->
       <section id="quickstart">
         <h2>3-Minute Quickstart</h2>
@@ -958,6 +1107,32 @@ LogicalDate = Intl.DateTimeFormat(userTimezone, ShiftedTimestamp)</code></pre>
           Returns the user's current streak, history, freezes, and expiry timer without mutating state.
         </p>
 
+        <h3 id="api-ai-skills">🤖 AI-Native Skills & Machine Directives</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/llms.txt</code></td>
+                <td>Official machine-readable LLM specification for AI coding assistants.</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/ai/skills</code></td>
+                <td>Catalog of all AI agent skills (Claude, Cursor, Codex, Antigravity).</td>
+              </tr>
+              <tr>
+                <td><span class="badge-method method-get">GET</span></td>
+                <td><code>/v1/ai/skills/:agent</code></td>
+                <td>Returns the raw prompt/config markdown for a specific agent (e.g. <code>/claude</code>, <code>/cursor</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <h3 id="api-gamification">Gamification Endpoints</h3>
         <div class="table-container">
           <table>
@@ -1082,6 +1257,32 @@ LogicalDate = Intl.DateTimeFormat(userTimezone, ShiftedTimestamp)</code></pre>
   </div>
 
   <script>
+    function copyPrompt(elementId, btn) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const text = el.innerText || el.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.background = 'rgba(16, 185, 129, 0.3)';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+        }, 2000);
+      }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+      });
+    }
+
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
       sb.classList.toggle('open');
